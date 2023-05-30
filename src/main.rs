@@ -1,55 +1,52 @@
-extern crate regex;
-extern crate reqwest;
-
-use regex::Regex;
+use serde_json::{from_str, Value};
 
 fn main() {
-    // Define the word for which you want to retrieve the IPA pronunciation
+    // what to search
     let word = "example";
 
-    // Make the API request to search for the word
+    // search for word and get first hit
     let search_url = format!(
-        "https://en.wiktionary.org/w/api.php?action=query&format=json&list=search&srsearch={}",
+        "https://en.wiktionary.org/w/api.php?format=json&action=query&list=search&srprop=redirecttitle&srlimit=1&srsearch={}",
         word
     );
-    let search_response = reqwest::blocking::get(&search_url).unwrap().text().unwrap();
+    let search_response_str = reqwest::blocking::get(&search_url).unwrap().text().unwrap();
+    let search_response = from_str::<Value>(search_response_str.as_str()).unwrap();
+    // id of first hit
+    let first_hit_id: &i64 = &search_response["query"]["search"][0]["pageid"]
+        .as_i64()
+        .unwrap();
 
-    // Parse the search response to get the page title
-    let page_title = parse_search_response(&search_response);
+    // get the content of the "pronunciation" section (id=3 ?) of the current revision
+    let search_url = format!("https://en.wiktionary.org/w/api.php?format=json&action=query&pageids={}&prop=revisions&rvslots=main&rvprop=content&rvsection=3",first_hit_id);
 
-    if let Some(title) = page_title {
-        // Make the API request to fetch the page content
-        let page_url = format!(
-            "https://en.wiktionary.org/w/api.php?action=query&format=json&prop=revisions&rvprop=content&titles={}",
-            title
-        );
-        let page_response = reqwest::blocking::get(&page_url).unwrap().text().unwrap();
+    let pron_sec_res = from_str::<Value>(
+        reqwest::blocking::get(&search_url)
+            .unwrap()
+            .text()
+            .unwrap()
+            .as_str(),
+    )
+    .unwrap();
 
-        // Parse the page response to extract the IPA pronunciation
-        let ipa = parse_page_response(&page_response);
+    // store the text of the section
+    let pron_sec = pron_sec_res["query"]["pages"][first_hit_id.to_string()]["revisions"][0]
+        ["slots"]["main"]["*"]
+        .as_str()
+        .unwrap();
 
-        println!("IPA pronunciation for {}: {}", word, ipa);
-    } else {
-        println!("No results found for the word {}", word);
-    }
-}
+    // filter out only the ipa pronunciations
+    let ipa_s = pron_sec
+        .split('\n')
+        .filter(|&x| x.starts_with("* {{a|")) // filter wanted lines
+        .flat_map(|x| {
+            x.split("{{")
+                .last()
+                .unwrap() // get second parethesis
+                .split(['|', '}'])
+                .skip(2)
+                .filter(|&x| !x.is_empty()) // filter out the last two '{'
+        })
+        .collect::<Vec<&str>>();
 
-// Function to parse the search response and extract the page title
-fn parse_search_response(response: &str) -> Option<String> {
-    let json: serde_json::Value = serde_json::from_str(response).unwrap();
-    if let Some(page) = json["query"]["search"][0].as_object() {
-        if let Some(title) = page.get("title") {
-            return Some(title.to_string());
-        }
-    }
-    None
-}
-
-// Function to parse the page response and extract the IPA pronunciation
-fn parse_page_response(response: &str) -> String {
-    let re = Regex::new(r"{{IPA\|/([^/]+)/(?:\|lang=\w+)?}}").unwrap();
-    if let Some(captures) = re.captures(response) {
-        return captures[1].to_string();
-    }
-    String::new()
+    println!("{:?}", ipa_s);
 }
