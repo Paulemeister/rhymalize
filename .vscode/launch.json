@@ -7,6 +7,62 @@
         {
             "type": "lldb",
             "request": "launch",
+            "name": "Debug unit tests in library 'rhymalize'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=rhymalize"
+                ],
+                "filter": {
+                    "name": "rhymalize",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'rhymalize-example'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=rhymalize-example",
+                    "--package=rhymalize"
+                ],
+                "filter": {
+                    "name": "rhymalize-example",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'rhymalize-example'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=rhymalize-example",
+                    "--package=rhymalize"
+                ],
+                "filter": {
+                    "name": "rhymalize-example",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
             "name": "Debug executable 'rhymalize'",
             "cargo": {
                 "args": [
