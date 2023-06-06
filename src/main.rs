@@ -9,4 +9,13 @@ fn main() {
         Ok(a) => println!("{:?}", a),
         Err(e) => println!("{}", e),
     }
+
+    let word_list = vec!["can't", "example"];
+
+    let ipa_s_list = get_multiple(word_list);
+
+    match ipa_s_list {
+        Ok(a) => a.iter().for_each(|x| println!("{:?}\n", x)),
+        Err(e) => println!("{}", e),
+    }
 }
