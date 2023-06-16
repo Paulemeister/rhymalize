@@ -1,7 +1,9 @@
 use anyhow::{ensure, Context, Error};
 use serde_json::{from_str, Value};
 
-static api_url: &str = "https://en.wiktionary.org/w/api.php";
+static API_URL: &str = "https://en.wiktionary.org/w/api.php";
+
+pub mod ipa;
 
 pub fn get_single(word: &str) -> Result<Vec<String>, Error> {
     // id of first hit
@@ -9,7 +11,7 @@ pub fn get_single(word: &str) -> Result<Vec<String>, Error> {
 
     let pron_sec_id = get_pron_sec_id(word)?;
     // get the content of the "pronunciation" section (id=3 ?) of the current revision
-    let search_url = format!("{}?format=json&action=query&pageids={}&prop=revisions&rvslots=main&rvprop=content&rvsection={}",api_url,first_hit_id,pron_sec_id);
+    let search_url = format!("{}?format=json&action=query&pageids={}&prop=revisions&rvslots=main&rvprop=content&rvsection={}",API_URL,first_hit_id,pron_sec_id);
 
     let pron_sec_res = from_str::<Value>(reqwest::blocking::get(&search_url)?.text()?.as_str())?;
 
@@ -40,7 +42,7 @@ pub fn get_single(word: &str) -> Result<Vec<String>, Error> {
 }
 
 fn get_sec_by_id(page_id: i64, sec_id: i64) -> Result<String, Error> {
-    let search_url = format!("{}?format=json&action=query&pageids={}&prop=revisions&rvslots=main&rvprop=content&rvsection={}",api_url,page_id,sec_id);
+    let search_url = format!("{}?format=json&action=query&pageids={}&prop=revisions&rvslots=main&rvprop=content&rvsection={}",API_URL,page_id,sec_id);
 
     let pron_sec_res = from_str::<Value>(reqwest::blocking::get(&search_url)?.text()?.as_str())?;
 
@@ -56,7 +58,7 @@ fn get_id(word: &str) -> Result<i64, Error> {
     // search for word and get first hit
     let search_url = format!(
         "{}?format=json&action=query&list=search&srwhat=nearmatch&srlimit=1&srsearch={}",
-        api_url, word
+        API_URL, word
     );
     let search_response_str = reqwest::blocking::get(&search_url)?.text()?;
     let search_response = from_str::<Value>(search_response_str.as_str())?;
@@ -69,7 +71,7 @@ fn get_id(word: &str) -> Result<i64, Error> {
 fn get_pron_sec_id(word: &str) -> Result<i64, Error> {
     let search_url = format!(
         "{}?format=json&action=parse&prop=sections&page={}",
-        api_url, word
+        API_URL, word
     );
     let res = from_str::<Value>(reqwest::blocking::get(&search_url)?.text()?.as_str())?;
     let sections0 = res

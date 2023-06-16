@@ -8,7 +8,9 @@ edition = "2021"
 [lib]
 name = "rhymalize"
 version = "0.1.0"
-path = "src/lib.rs"
+path = "src/lib/lib.rs"
+
+
 
 [[bin]]
 name = "rhymalize-example"
