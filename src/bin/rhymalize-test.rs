@@ -1,4 +1,4 @@
-use rhymalize::*;
+use rhymalize::ipa_utils::fetching::*;
 fn main() {
     // what to search
     let word = "example";

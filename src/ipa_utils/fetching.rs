@@ -3,8 +3,6 @@ use serde_json::{from_str, Value};
 
 static API_URL: &str = "https://en.wiktionary.org/w/api.php";
 
-pub mod ipa;
-
 pub fn get_single(word: &str) -> Result<Vec<String>, Error> {
     // id of first hit
     let first_hit_id = get_id(word)?;
@@ -150,4 +148,14 @@ pub fn get_multiple(words: Vec<&str>) -> Result<Vec<Vec<String>>, Error> {
         )
     }
     Ok(res)
+}
+
+#[cfg(text)]
+mod tests {
+
+    #[test]
+    fn test() {
+        println!("Hi 1");
+        assert_eq!(1, 1);
+    }
 }
