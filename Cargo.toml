@@ -17,6 +17,11 @@ name = "rhymalize-example"
 version = "0.1.0"
 path = "src/bin/rhymalize-test.rs"
 
+[[bin]]
+name = "ipa-example"
+version = "0.1.0"
+path = "src/bin/ipa-test.rs"
+
 [dependencies]
 reqwest = {version = "0.11", features = ["blocking"]}
 regex = "1.5"

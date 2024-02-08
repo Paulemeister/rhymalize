@@ -12,4 +12,17 @@ mod tests {
         };
         assert_eq!(one.to_string(), String::from("\u{0069}"));
     }
+    #[test]
+    fn vowel_from_str() {
+        let str = "\u{0065}\u{031E}";
+        let vowel = Vowel::try_from(str).unwrap();
+        assert_eq!(
+            vowel,
+            Vowel {
+                height: VowelHeight::Mid,
+                backness: VowelBackness::Front,
+                roundedness: VowelRoundedness::Unrounded
+            }
+        )
+    }
 }

@@ -1,18 +1,63 @@
 #![allow(dead_code)]
 
-use std::path::Display;
-
-use reqwest::header::ALT_SVC;
+use core::fmt;
 
 pub struct Letter {
     ipa_type: LetterType,
     diacritics: Option<Vec<Diacritic>>,
 }
 
+impl TryFrom<&str> for Letter {
+    type Error = ();
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let diacritics = get_diacritics(value);
+        let ipa_type = LetterType::try_from(value)?;
+        Ok(Self {
+            ipa_type,
+            diacritics: if diacritics.is_empty() {
+                None
+            } else {
+                Some(diacritics)
+            },
+        })
+    }
+}
+
+impl fmt::Display for Letter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.ipa_type)
+    }
+}
+
 pub enum LetterType {
-    Consonant(Consonant),
+    PulmonicConsonant(PulmonicConsonant),
+    NonPulmonicConsonant,
     Vowel(Vowel),
     Suprasegmental(Suprasegmental),
+}
+
+impl TryFrom<&str> for LetterType {
+    type Error = ();
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        if let Ok(vow) = Vowel::try_from(value) {
+            return Ok(Self::Vowel(vow));
+        }
+        Err(())
+    }
+}
+
+impl fmt::Display for LetterType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                LetterType::PulmonicConsonant(p) => p.to_string(),
+                LetterType::Vowel(v) => v.to_string(),
+                _ => return Err(fmt::Error),
+            }
+        )
+    }
 }
 
 pub enum Diacritic {
@@ -50,6 +95,116 @@ pub enum Diacritic {
     RetractedTongueRoot,
     Nasalized,
     Rhoticity,
+}
+
+fn get_diacritics(value: &str) -> Vec<Diacritic> {
+    let mut diacs = vec![];
+    if value.contains('\u{0329}') || value.contains('\u{030D}') {
+        diacs.push(Diacritic::Syllabic)
+    }
+    if value.contains('\u{032F}') || value.contains('\u{0311}') {
+        diacs.push(Diacritic::NonSyllabic)
+    }
+    if value.contains('\u{02B0}') {
+        diacs.push(Diacritic::Aspirated)
+    }
+    if value.contains('\u{031A}') {
+        diacs.push(Diacritic::NoAudibleRelease)
+    }
+    if value.contains('\u{207F}') {
+        diacs.push(Diacritic::NasalRelease)
+    }
+    if value.contains('\u{02E1}') {
+        diacs.push(Diacritic::LateralRelease)
+    }
+    if value.contains('\u{1DBF}') {
+        diacs.push(Diacritic::VoicelessDentalFricativeRelease)
+    }
+    if value.contains('\u{02E3}') {
+        diacs.push(Diacritic::VoicelessVelarFricativeRelease)
+    }
+    if value.contains('\u{1D4A}') {
+        diacs.push(Diacritic::MidCentralVowelRelease)
+    }
+    // attention: used for specific consonants as well. duplicate in diacritics?
+    if value.contains('\u{0325}') || value.contains('\u{030A}') {
+        diacs.push(Diacritic::Voiceless)
+    }
+    if value.contains('\u{032C}') {
+        diacs.push(Diacritic::Voiced)
+    }
+    if value.contains('\u{0324}') {
+        diacs.push(Diacritic::BreathyVoiced)
+    }
+    if value.contains('\u{0330}') {
+        diacs.push(Diacritic::CreakyVoiced)
+    }
+    if value.contains('\u{032A}') || value.contains('\u{0346}') {
+        diacs.push(Diacritic::Dental)
+    }
+    if value.contains('\u{033C}') {
+        diacs.push(Diacritic::Linguolabial)
+    }
+    if value.contains('\u{033A}') {
+        diacs.push(Diacritic::Apical)
+    }
+    if value.contains('\u{033B}') {
+        diacs.push(Diacritic::Laminal)
+    }
+    if value.contains('\u{031F}') {
+        // has other
+        diacs.push(Diacritic::Advanced)
+    }
+    if value.contains('\u{0320}') || value.contains('\u{0304}') {
+        diacs.push(Diacritic::Retracted)
+    }
+    if value.contains('\u{0308}') {
+        diacs.push(Diacritic::Centralized)
+    }
+    if value.contains('\u{033D}') {
+        diacs.push(Diacritic::MidCentralized)
+    }
+    if value.contains('\u{031D}') || value.contains('\u{02D4}') {
+        diacs.push(Diacritic::Raised)
+    }
+    if value.contains('\u{031E}') || value.contains('\u{02D5}') {
+        diacs.push(Diacritic::Lowered)
+    }
+    if value.contains('\u{0339}') || value.contains('\u{0357}') {
+        diacs.push(Diacritic::MoreRounded)
+    }
+    if value.contains('\u{031C}') || value.contains('\u{0351}') {
+        diacs.push(Diacritic::LessRounded)
+    }
+    if value.contains('\u{02B7}') {
+        diacs.push(Diacritic::Labialized)
+    }
+    if value.contains('\u{02B2}') {
+        diacs.push(Diacritic::Palatalized)
+    }
+    if value.contains('\u{02E0}') {
+        diacs.push(Diacritic::Velarized)
+    }
+    if value.contains('\u{0334}') {
+        diacs.push(Diacritic::VelarizedOrPharyngealized)
+    }
+    if value.contains('\u{02E4}') {
+        diacs.push(Diacritic::Pharyngealized)
+    }
+    if value.contains('\u{0318}') || value.contains('\u{AB6A}') {
+        diacs.push(Diacritic::AdvancedTongueRoot)
+    }
+    if value.contains('\u{0319}') || value.contains('\u{AB6B}') {
+        diacs.push(Diacritic::RetractedTongueRoot)
+    }
+    if value.contains('\u{0303}') {
+        diacs.push(Diacritic::Nasalized)
+    }
+    if value.contains('\u{02DE}') {
+        diacs.push(Diacritic::Rhoticity)
+    }
+
+    diacs
 }
 
 pub enum Suprasegmental {
@@ -99,6 +254,7 @@ pub enum PitchDiacritic {
     MidFalling,
 }
 
+#[derive(PartialEq, Debug)]
 pub struct Vowel {
     pub height: VowelHeight,
     pub backness: VowelBackness,
@@ -201,6 +357,233 @@ impl std::fmt::Display for Vowel {
     }
 }
 
+impl TryFrom<&str> for Vowel {
+    type Error = ();
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Ok(
+            //// multiple conditions first
+            if value.contains('\u{0061}') && value.contains('\u{0308}') {
+                // account for ä as one char?
+                Vowel {
+                    height: VowelHeight::Open,
+                    backness: VowelBackness::Central,
+                    roundedness: VowelRoundedness::Unrounded,
+                }
+            } else if value.contains('\u{006F}') && value.contains('\u{031E}') {
+                Vowel {
+                    height: VowelHeight::Mid,
+                    backness: VowelBackness::Back,
+                    roundedness: VowelRoundedness::Rounded,
+                }
+            } else if value.contains('\u{0264}') && value.contains('\u{031E}') {
+                Vowel {
+                    height: VowelHeight::Mid,
+                    backness: VowelBackness::Back,
+                    roundedness: VowelRoundedness::Unrounded,
+                }
+            } else if value.contains('\u{00F8}') && value.contains('\u{031E}') {
+                Vowel {
+                    height: VowelHeight::Mid,
+                    backness: VowelBackness::Front,
+                    roundedness: VowelRoundedness::Rounded,
+                }
+            } else if value.contains('\u{0065}') && value.contains('\u{031E}') {
+                Vowel {
+                    height: VowelHeight::Mid,
+                    backness: VowelBackness::Front,
+                    roundedness: VowelRoundedness::Unrounded,
+                }
+            }
+            /////////////
+            else if value.contains('\u{0075}') {
+                Vowel {
+                    height: VowelHeight::Close,
+                    backness: VowelBackness::Back,
+                    roundedness: VowelRoundedness::Rounded,
+                }
+            } else if value.contains('\u{026F}') {
+                Vowel {
+                    height: VowelHeight::Close,
+                    backness: VowelBackness::Back,
+                    roundedness: VowelRoundedness::Unrounded,
+                }
+            } else if value.contains('\u{0289}') {
+                Vowel {
+                    height: VowelHeight::Close,
+                    backness: VowelBackness::Central,
+                    roundedness: VowelRoundedness::Rounded,
+                }
+            } else if value.contains('\u{0268}') {
+                Vowel {
+                    height: VowelHeight::Close,
+                    backness: VowelBackness::Central,
+                    roundedness: VowelRoundedness::Unrounded,
+                }
+            } else if value.contains('\u{0079}') {
+                Vowel {
+                    height: VowelHeight::Close,
+                    backness: VowelBackness::Front,
+                    roundedness: VowelRoundedness::Rounded,
+                }
+            } else if value.contains('\u{0069}') {
+                Vowel {
+                    height: VowelHeight::Close,
+                    backness: VowelBackness::Front,
+                    roundedness: VowelRoundedness::Unrounded,
+                }
+            }
+            /////////////////////////////
+            else if value.contains('\u{028A}') {
+                Vowel {
+                    height: VowelHeight::NearClose,
+                    backness: VowelBackness::Back,
+                    roundedness: VowelRoundedness::Rounded,
+                }
+            } else if value.contains('\u{028F}') {
+                Vowel {
+                    height: VowelHeight::NearClose,
+                    backness: VowelBackness::Front,
+                    roundedness: VowelRoundedness::Rounded,
+                }
+            } else if value.contains('\u{026A}') {
+                Vowel {
+                    height: VowelHeight::NearClose,
+                    backness: VowelBackness::Front,
+                    roundedness: VowelRoundedness::Unrounded,
+                }
+            }
+            ///////////////
+            else if value.contains('\u{006F}') {
+                Vowel {
+                    height: VowelHeight::CloseMid,
+                    backness: VowelBackness::Back,
+                    roundedness: VowelRoundedness::Rounded,
+                }
+            } else if value.contains('\u{0264}') {
+                Vowel {
+                    height: VowelHeight::CloseMid,
+                    backness: VowelBackness::Back,
+                    roundedness: VowelRoundedness::Unrounded,
+                }
+            } else if value.contains('\u{0275}') {
+                Vowel {
+                    height: VowelHeight::CloseMid,
+                    backness: VowelBackness::Central,
+                    roundedness: VowelRoundedness::Rounded,
+                }
+            } else if value.contains('\u{0258}') {
+                Vowel {
+                    height: VowelHeight::CloseMid,
+                    backness: VowelBackness::Central,
+                    roundedness: VowelRoundedness::Unrounded,
+                }
+            } else if value.contains('\u{00F8}') {
+                Vowel {
+                    height: VowelHeight::CloseMid,
+                    backness: VowelBackness::Front,
+                    roundedness: VowelRoundedness::Rounded,
+                }
+            } else if value.contains('\u{0065}') {
+                Vowel {
+                    height: VowelHeight::CloseMid,
+                    backness: VowelBackness::Front,
+                    roundedness: VowelRoundedness::Unrounded,
+                }
+            }
+            ////////////////
+            else if value.contains('\u{0259}') {
+                Vowel {
+                    height: VowelHeight::Mid,
+                    backness: VowelBackness::Central,
+                    roundedness: VowelRoundedness::Rounded,
+                }
+            }
+            ///////////
+            else if value.contains('\u{0254}') {
+                Vowel {
+                    height: VowelHeight::OpenMid,
+                    backness: VowelBackness::Back,
+                    roundedness: VowelRoundedness::Rounded,
+                }
+            } else if value.contains('\u{028C}') {
+                Vowel {
+                    height: VowelHeight::OpenMid,
+                    backness: VowelBackness::Back,
+                    roundedness: VowelRoundedness::Unrounded,
+                }
+            } else if value.contains('\u{025E}') {
+                Vowel {
+                    height: VowelHeight::OpenMid,
+                    backness: VowelBackness::Central,
+                    roundedness: VowelRoundedness::Rounded,
+                }
+            } else if value.contains('\u{025C}') {
+                Vowel {
+                    height: VowelHeight::OpenMid,
+                    backness: VowelBackness::Central,
+                    roundedness: VowelRoundedness::Unrounded,
+                }
+            } else if value.contains('\u{0153}') {
+                Vowel {
+                    height: VowelHeight::OpenMid,
+                    backness: VowelBackness::Front,
+                    roundedness: VowelRoundedness::Rounded,
+                }
+            } else if value.contains('\u{025B}') {
+                Vowel {
+                    height: VowelHeight::OpenMid,
+                    backness: VowelBackness::Front,
+                    roundedness: VowelRoundedness::Unrounded,
+                }
+            }
+            ///////////
+            else if value.contains('\u{0252}') {
+                Vowel {
+                    ////////one possiblility
+                    height: VowelHeight::NearOpen,
+                    backness: VowelBackness::Central,
+                    roundedness: VowelRoundedness::Unrounded,
+                }
+            } else if value.contains('\u{00E6}') {
+                Vowel {
+                    ////////one possiblility
+                    height: VowelHeight::NearOpen,
+                    backness: VowelBackness::Front,
+                    roundedness: VowelRoundedness::Unrounded,
+                }
+            }
+            ///////////
+            else if value.contains('\u{0252}') {
+                Vowel {
+                    height: VowelHeight::Open,
+                    backness: VowelBackness::Back,
+                    roundedness: VowelRoundedness::Rounded,
+                }
+            } else if value.contains('\u{0251}') {
+                Vowel {
+                    height: VowelHeight::Open,
+                    backness: VowelBackness::Back,
+                    roundedness: VowelRoundedness::Unrounded,
+                }
+            } else if value.contains('\u{0276}') {
+                Vowel {
+                    height: VowelHeight::Open,
+                    backness: VowelBackness::Front,
+                    roundedness: VowelRoundedness::Rounded,
+                }
+            } else if value.contains('\u{0061}') {
+                Vowel {
+                    height: VowelHeight::Open,
+                    backness: VowelBackness::Front,
+                    roundedness: VowelRoundedness::Unrounded,
+                }
+            } else {
+                return Err(());
+            },
+        )
+    }
+}
+#[derive(PartialEq, Debug)]
 pub enum VowelHeight {
     Close,
     NearClose,
@@ -211,19 +594,16 @@ pub enum VowelHeight {
     Open,
 }
 
+#[derive(PartialEq, Debug)]
 pub enum VowelBackness {
     Front,
     Central,
     Back,
 }
-
+#[derive(PartialEq, Debug)]
 pub enum VowelRoundedness {
     Unrounded,
     Rounded,
-}
-
-pub enum Consonant {
-    Pulmonic(PulmonicConsonant),
 }
 
 pub struct PulmonicConsonant {
@@ -351,7 +731,7 @@ impl std::fmt::Display for PulmonicConsonant {
                 },
                 ConsonantPlace::Linguolabial => match v {
                     ConsonantVoicing::Voiced => "\u{00F0}\u{033C}",
-                    ConsonantVoicing::Voiceless => "\u{03B8}\u{033C}",
+                    ConsonantVoicing::Voiceless => "\u{033C}\u{03B8}",
                 },
                 ConsonantPlace::Dental => match v {
                     ConsonantVoicing::Voiced => "\u{00F0}",
@@ -359,7 +739,7 @@ impl std::fmt::Display for PulmonicConsonant {
                 },
                 ConsonantPlace::Aveolar => match v {
                     ConsonantVoicing::Voiced => "\u{00F0}\u{0331}",
-                    ConsonantVoicing::Voiceless => "\u{03B8}\u{0331}",
+                    ConsonantVoicing::Voiceless => "\u{0331}\u{03B8}", // small theta has higher codepoint, so adjacent combining chars will combine to the right
                 },
                 ConsonantPlace::Postalveolar => match v {
                     ConsonantVoicing::Voiced => "\u{0279}\u{0331}\u{02D4}",
