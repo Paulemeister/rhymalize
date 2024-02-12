@@ -25,4 +25,29 @@ mod tests {
             }
         )
     }
+    #[test]
+    fn pul_cons_display() {
+        let one = PulmonicConsonant {
+            manner: PulmonicConsonantManner::NonSibilantFricative,
+            place: ConsonantPlace::Postalveolar,
+            voicing: ConsonantVoicing::Voiceless,
+        };
+        assert_eq!(
+            one.to_string(),
+            String::from("\u{030A}\u{0279}\u{0331}\u{02D4}")
+        );
+    }
+    #[test]
+    fn pul_cons_from_str() {
+        let str = "\u{030A}\u{0279}\u{0331}\u{02D4}";
+        let cons = PulmonicConsonant::try_from(str).unwrap();
+        assert_eq!(
+            cons,
+            PulmonicConsonant {
+                manner: PulmonicConsonantManner::NonSibilantFricative,
+                place: ConsonantPlace::Postalveolar,
+                voicing: ConsonantVoicing::Voiceless,
+            }
+        )
+    }
 }

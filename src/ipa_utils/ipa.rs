@@ -1,6 +1,640 @@
 #![allow(dead_code)]
-
 use core::fmt;
+use phf::{phf_map, Map};
+
+const DIACRITIC_MAP: Map<char, Diacritic> = phf_map! {
+    '\u{0329}'=>Diacritic::Syllabic,
+    '\u{030D}'=>Diacritic::Syllabic,
+    '\u{032F}'=>Diacritic::NonSyllabic,
+    '\u{0311}'=>Diacritic::NonSyllabic,
+    '\u{02B0}'=>Diacritic::Aspirated,
+    '\u{031A}'=>Diacritic::NoAudibleRelease,
+    '\u{207F}'=>Diacritic::NasalRelease,
+    '\u{02E1}'=>Diacritic::LateralRelease,
+    '\u{1DBF}'=>Diacritic::VoicelessDentalFricativeRelease,
+    '\u{02E3}'=>Diacritic::VoicelessVelarFricativeRelease,
+    '\u{1D4A}'=>Diacritic::MidCentralVowelRelease,
+    '\u{0325}'=>Diacritic::Voiceless,
+    '\u{030A}'=>Diacritic::Voiceless,
+    '\u{032C}'=>Diacritic::Voiced,
+    '\u{0324}'=>Diacritic::BreathyVoiced,
+    '\u{0330}'=>Diacritic::CreakyVoiced,
+    '\u{032A}'=>Diacritic::Dental,
+    '\u{0346}'=>Diacritic::Dental,
+    '\u{033C}'=>Diacritic::Linguolabial,
+    '\u{033A}'=>Diacritic::Apical,
+    '\u{033B}'=>Diacritic::Laminal,
+    '\u{031F}'=>Diacritic::Advanced,// has other
+    '\u{0320}'=>Diacritic::Retracted,
+    '\u{0304}'=>Diacritic::Retracted,
+    '\u{0308}'=>Diacritic::Centralized,
+    '\u{033D}'=>Diacritic::MidCentralized,
+    '\u{031D}'=>Diacritic::NonSyllabic,
+    '\u{02D4}'=>Diacritic::Raised,
+    '\u{031E}'=>Diacritic::Lowered,
+    '\u{02D5}'=>Diacritic::Lowered,
+    '\u{0339}'=>Diacritic::MoreRounded,
+    '\u{0357}'=>Diacritic::MoreRounded,
+    '\u{031C}'=>Diacritic::LessRounded,
+    '\u{0351}'=>Diacritic::LessRounded,
+    '\u{02B7}'=>Diacritic::Labialized,
+    '\u{02B2}'=>Diacritic::Palatalized,
+    '\u{02E0}'=>Diacritic::Velarized,
+    '\u{0334}'=>Diacritic::VelarizedOrPharyngealized,
+    '\u{02E4}'=>Diacritic::Pharyngealized,
+    '\u{0318}'=>Diacritic::AdvancedTongueRoot,
+    '\u{AB6A}'=>Diacritic::AdvancedTongueRoot,
+    '\u{0319}'=>Diacritic::RetractedTongueRoot,
+    '\u{AB6B}'=>Diacritic::RetractedTongueRoot,
+    '\u{0303}'=>Diacritic::Nasalized,
+    '\u{02DE}'=>Diacritic::Rhoticity,
+};
+
+const SUPRASEGREMENTAL_MAP: Map<char, Suprasegmental> = phf_map! {
+    '\u{02C8}' => Suprasegmental::PrimaryStress,
+    '\u{02CC}' => Suprasegmental::SecondaryStress,
+    '\u{02D0}' => Suprasegmental::Long,
+    '\u{02D1}' => Suprasegmental::HalfLong,
+    '\u{0306}' => Suprasegmental::ExtraShort,
+    '\u{002E}' => Suprasegmental::SyllableBreak,
+    '\u{203F}' => Suprasegmental::Linking,
+    '\u{007C}' => Suprasegmental::MinorBreak,
+    '\u{2016}' => Suprasegmental::MajorBreak,
+    '\u{2197}' => Suprasegmental::GlobalRise,
+    '\u{2198}' => Suprasegmental::GlobalFall,
+
+};
+
+static CONSONANT_LIST: [(PulmonicConsonant, &[char]); 71] = [
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::NonSibilantFricative,
+            place: ConsonantPlace::Postalveolar,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{030A}', '\u{0279}', '\u{0331}', '\u{02D4}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::NonSibilantFricative,
+            place: ConsonantPlace::Retroflex,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{027B}', '\u{030A}', '\u{02D4}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::NonSibilantFricative,
+            place: ConsonantPlace::Postalveolar,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0279}', '\u{0331}', '\u{02D4}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Nasal,
+            place: ConsonantPlace::Bilabial,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{006D}', '\u{0325}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Nasal,
+            place: ConsonantPlace::Labiodental,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{006D}', '\u{006D}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Nasal,
+            place: ConsonantPlace::Linguolabial,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{006E}', '\u{033C}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Nasal,
+            place: ConsonantPlace::Aveolar,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{006E}', '\u{0325}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Nasal,
+            place: ConsonantPlace::Retroflex,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{0273}', '\u{030A}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Nasal,
+            place: ConsonantPlace::Palatal,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{0272}', '\u{030A}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Nasal,
+            place: ConsonantPlace::Velar,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{014B}', '\u{030A}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Nasal,
+            place: ConsonantPlace::Uvular,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{0274}', '\u{0325}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Plosive,
+            place: ConsonantPlace::Labiodental,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0062}', '\u{032A}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Plosive,
+            place: ConsonantPlace::Labiodental,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{0070}', '\u{032A}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Plosive,
+            place: ConsonantPlace::Linguolabial,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0064}', '\u{033C}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Plosive,
+            place: ConsonantPlace::Linguolabial,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{0074}', '\u{033C}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::NonSibilantFricative,
+            place: ConsonantPlace::Linguolabial,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{00F0}', '\u{033C}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::NonSibilantFricative,
+            place: ConsonantPlace::Linguolabial,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{033C}', '\u{03B8}'], // attention to output order
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::NonSibilantFricative,
+            place: ConsonantPlace::Aveolar,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{00F0}', '\u{0331}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::NonSibilantFricative,
+            place: ConsonantPlace::Aveolar,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{0331}', '\u{03B8}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::NonSibilantFricative,
+            place: ConsonantPlace::Retroflex,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{027B}', '\u{02D4}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Approximant,
+            place: ConsonantPlace::Glottal,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0294}', '\u{0330}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Nasal,
+            place: ConsonantPlace::Bilabial,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{006D}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Nasal,
+            place: ConsonantPlace::Labiodental,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0271}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Nasal,
+            place: ConsonantPlace::Aveolar,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{006E}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Nasal,
+            place: ConsonantPlace::Retroflex,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0273}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Nasal,
+            place: ConsonantPlace::Palatal,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0272}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Nasal,
+            place: ConsonantPlace::Velar,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{014B}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Nasal,
+            place: ConsonantPlace::Uvular,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0274}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Plosive,
+            place: ConsonantPlace::Bilabial,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0062}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Plosive,
+            place: ConsonantPlace::Bilabial,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{0070}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Plosive,
+            place: ConsonantPlace::Aveolar,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0064}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Plosive,
+            place: ConsonantPlace::Aveolar,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{0074}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Plosive,
+            place: ConsonantPlace::Retroflex,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0256}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Plosive,
+            place: ConsonantPlace::Retroflex,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{0288}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Plosive,
+            place: ConsonantPlace::Palatal,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{025F}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Plosive,
+            place: ConsonantPlace::Palatal,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{0063}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Plosive,
+            place: ConsonantPlace::Velar,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0261}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Plosive,
+            place: ConsonantPlace::Velar,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{006B}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Plosive,
+            place: ConsonantPlace::Uvular,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0262}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Plosive,
+            place: ConsonantPlace::Uvular,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{0071}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Plosive,
+            place: ConsonantPlace::Pharyngeal,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{02A1}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Plosive,
+            place: ConsonantPlace::Glottal,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{0294}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::SibilantFricative,
+            place: ConsonantPlace::Aveolar,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{007A}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::SibilantFricative,
+            place: ConsonantPlace::Aveolar,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{0073}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::SibilantFricative,
+            place: ConsonantPlace::Postalveolar,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0292}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::SibilantFricative,
+            place: ConsonantPlace::Postalveolar,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{0283}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::SibilantFricative,
+            place: ConsonantPlace::Retroflex,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0290}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::SibilantFricative,
+            place: ConsonantPlace::Retroflex,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{0282}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::SibilantFricative,
+            place: ConsonantPlace::Palatal,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0291}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::SibilantFricative,
+            place: ConsonantPlace::Palatal,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{0255}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::NonSibilantFricative,
+            place: ConsonantPlace::Bilabial,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{03B2}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::NonSibilantFricative,
+            place: ConsonantPlace::Bilabial,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{0278}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::NonSibilantFricative,
+            place: ConsonantPlace::Labiodental,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0076}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::NonSibilantFricative,
+            place: ConsonantPlace::Labiodental,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{0066}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::NonSibilantFricative,
+            place: ConsonantPlace::Dental,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{00F0}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::NonSibilantFricative,
+            place: ConsonantPlace::Dental,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{03B8}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::NonSibilantFricative,
+            place: ConsonantPlace::Palatal,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{029D}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::NonSibilantFricative,
+            place: ConsonantPlace::Palatal,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{00E7}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::NonSibilantFricative,
+            place: ConsonantPlace::Velar,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0263}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::NonSibilantFricative,
+            place: ConsonantPlace::Velar,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{0078}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::NonSibilantFricative,
+            place: ConsonantPlace::Uvular,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0281}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::NonSibilantFricative,
+            place: ConsonantPlace::Uvular,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{03C7}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::NonSibilantFricative,
+            place: ConsonantPlace::Pharyngeal,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0295}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::NonSibilantFricative,
+            place: ConsonantPlace::Pharyngeal,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{0127}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::NonSibilantFricative,
+            place: ConsonantPlace::Glottal,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0266}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::NonSibilantFricative,
+            place: ConsonantPlace::Glottal,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{0068}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Approximant,
+            place: ConsonantPlace::Labiodental,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{028B}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Approximant,
+            place: ConsonantPlace::Aveolar,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0279}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Approximant,
+            place: ConsonantPlace::Retroflex,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{027B}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Approximant,
+            place: ConsonantPlace::Palatal,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{006A}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Approximant,
+            place: ConsonantPlace::Velar,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0270}'],
+    ),
+];
 
 pub struct Letter {
     ipa_type: LetterType,
@@ -42,6 +676,9 @@ impl TryFrom<&str> for LetterType {
         if let Ok(vow) = Vowel::try_from(value) {
             return Ok(Self::Vowel(vow));
         }
+        if let Ok(sup) = Suprasegmental::try_from(value) {
+            return Ok(Self::Suprasegmental(sup));
+        }
         Err(())
     }
 }
@@ -60,6 +697,7 @@ impl fmt::Display for LetterType {
     }
 }
 
+#[derive(Clone, Copy, PartialEq)]
 pub enum Diacritic {
     Syllabic,
     NonSyllabic,
@@ -99,114 +737,24 @@ pub enum Diacritic {
 
 fn get_diacritics(value: &str) -> Vec<Diacritic> {
     let mut diacs = vec![];
-    if value.contains('\u{0329}') || value.contains('\u{030D}') {
-        diacs.push(Diacritic::Syllabic)
+    for (entry, dia) in DIACRITIC_MAP.entries() {
+        if value.contains(*entry) {
+            diacs.push(*dia);
+        }
     }
-    if value.contains('\u{032F}') || value.contains('\u{0311}') {
-        diacs.push(Diacritic::NonSyllabic)
-    }
-    if value.contains('\u{02B0}') {
-        diacs.push(Diacritic::Aspirated)
-    }
-    if value.contains('\u{031A}') {
-        diacs.push(Diacritic::NoAudibleRelease)
-    }
-    if value.contains('\u{207F}') {
-        diacs.push(Diacritic::NasalRelease)
-    }
-    if value.contains('\u{02E1}') {
-        diacs.push(Diacritic::LateralRelease)
-    }
-    if value.contains('\u{1DBF}') {
-        diacs.push(Diacritic::VoicelessDentalFricativeRelease)
-    }
-    if value.contains('\u{02E3}') {
-        diacs.push(Diacritic::VoicelessVelarFricativeRelease)
-    }
-    if value.contains('\u{1D4A}') {
-        diacs.push(Diacritic::MidCentralVowelRelease)
-    }
-    // attention: used for specific consonants as well. duplicate in diacritics?
-    if value.contains('\u{0325}') || value.contains('\u{030A}') {
-        diacs.push(Diacritic::Voiceless)
-    }
-    if value.contains('\u{032C}') {
-        diacs.push(Diacritic::Voiced)
-    }
-    if value.contains('\u{0324}') {
-        diacs.push(Diacritic::BreathyVoiced)
-    }
-    if value.contains('\u{0330}') {
-        diacs.push(Diacritic::CreakyVoiced)
-    }
-    if value.contains('\u{032A}') || value.contains('\u{0346}') {
-        diacs.push(Diacritic::Dental)
-    }
-    if value.contains('\u{033C}') {
-        diacs.push(Diacritic::Linguolabial)
-    }
-    if value.contains('\u{033A}') {
-        diacs.push(Diacritic::Apical)
-    }
-    if value.contains('\u{033B}') {
-        diacs.push(Diacritic::Laminal)
-    }
-    if value.contains('\u{031F}') {
-        // has other
-        diacs.push(Diacritic::Advanced)
-    }
-    if value.contains('\u{0320}') || value.contains('\u{0304}') {
-        diacs.push(Diacritic::Retracted)
-    }
-    if value.contains('\u{0308}') {
-        diacs.push(Diacritic::Centralized)
-    }
-    if value.contains('\u{033D}') {
-        diacs.push(Diacritic::MidCentralized)
-    }
-    if value.contains('\u{031D}') || value.contains('\u{02D4}') {
-        diacs.push(Diacritic::Raised)
-    }
-    if value.contains('\u{031E}') || value.contains('\u{02D5}') {
-        diacs.push(Diacritic::Lowered)
-    }
-    if value.contains('\u{0339}') || value.contains('\u{0357}') {
-        diacs.push(Diacritic::MoreRounded)
-    }
-    if value.contains('\u{031C}') || value.contains('\u{0351}') {
-        diacs.push(Diacritic::LessRounded)
-    }
-    if value.contains('\u{02B7}') {
-        diacs.push(Diacritic::Labialized)
-    }
-    if value.contains('\u{02B2}') {
-        diacs.push(Diacritic::Palatalized)
-    }
-    if value.contains('\u{02E0}') {
-        diacs.push(Diacritic::Velarized)
-    }
-    if value.contains('\u{0334}') {
-        diacs.push(Diacritic::VelarizedOrPharyngealized)
-    }
-    if value.contains('\u{02E4}') {
-        diacs.push(Diacritic::Pharyngealized)
-    }
-    if value.contains('\u{0318}') || value.contains('\u{AB6A}') {
-        diacs.push(Diacritic::AdvancedTongueRoot)
-    }
-    if value.contains('\u{0319}') || value.contains('\u{AB6B}') {
-        diacs.push(Diacritic::RetractedTongueRoot)
-    }
-    if value.contains('\u{0303}') {
-        diacs.push(Diacritic::Nasalized)
-    }
-    if value.contains('\u{02DE}') {
-        diacs.push(Diacritic::Rhoticity)
-    }
-
     diacs
 }
 
+impl fmt::Display for Diacritic {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some((text, _)) = DIACRITIC_MAP.entries().find(|(_, dia)| *dia == self) {
+            write!(f, "{}", text)
+        } else {
+            Err(fmt::Error)
+        }
+    }
+}
+#[derive(PartialEq, Clone)]
 pub enum Suprasegmental {
     PrimaryStress,
     SecondaryStress,
@@ -225,11 +773,35 @@ pub enum Suprasegmental {
     ChaoToneLetter(ChaoToneLetter),
 }
 
+impl fmt::Display for Suprasegmental {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some((text, _)) = SUPRASEGREMENTAL_MAP.entries().find(|(_, sup)| *sup == self) {
+            write!(f, "{}", text)
+        } else {
+            Err(fmt::Error)
+        }
+    }
+}
+
+impl TryFrom<&str> for Suprasegmental {
+    type Error = ();
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        for i in value.chars() {
+            if let Some(a) = SUPRASEGREMENTAL_MAP.get(&i) {
+                return Ok(a.clone());
+            }
+        }
+        Err(())
+    }
+}
+
+#[derive(PartialEq, Clone)]
 pub struct ChaoToneLetter {
     contour: Vec<ChaoToneLetterHeight>,
     reversed: bool,
 }
 
+#[derive(Eq, PartialEq, Clone, Copy)]
 pub enum ChaoToneLetterHeight {
     ExtraHigh,
     High,
@@ -238,6 +810,7 @@ pub enum ChaoToneLetterHeight {
     ExtraLow,
 }
 
+#[derive(PartialEq, Clone, Copy)]
 pub enum PitchDiacritic {
     ExtraHigh,
     High,
@@ -606,6 +1179,7 @@ pub enum VowelRoundedness {
     Rounded,
 }
 
+#[derive(PartialEq, Clone, Debug)]
 pub struct PulmonicConsonant {
     pub manner: PulmonicConsonantManner,
     pub place: ConsonantPlace,
@@ -614,196 +1188,49 @@ pub struct PulmonicConsonant {
     // otherwise it should be a diacritic
 }
 
+fn test(s: &PulmonicConsonant) -> Result<String, ()> {
+    let a: Option<String> = CONSONANT_LIST
+        .iter()
+        .find(|(consonant, _)| s == consonant)
+        .map(|(_, chars)| chars.iter().collect());
+    a.ok_or(())
+}
+
+fn test2(text: &str) -> Result<PulmonicConsonant, ()> {
+    for (i, j) in CONSONANT_LIST.iter() {
+        if j.iter().all(|x| text.contains(*x)) {
+            return Ok(i.clone());
+        }
+    }
+    Err(())
+}
+
 impl std::fmt::Display for PulmonicConsonant {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let PulmonicConsonant {
-            manner: m,
-            place: p,
-            voicing: v,
-        } = self;
-
-        let str = match m {
-            PulmonicConsonantManner::Nasal => match p {
-                ConsonantPlace::Bilabial => match v {
-                    ConsonantVoicing::Voiced => "\u{006D}",
-                    ConsonantVoicing::Voiceless => "\u{006D}\u{0325}",
-                },
-                ConsonantPlace::Labiodental => match v {
-                    ConsonantVoicing::Voiced => "\u{0271}",
-                    ConsonantVoicing::Voiceless => "\u{0271}\u{030A}",
-                },
-                ConsonantPlace::Linguolabial => match v {
-                    ConsonantVoicing::Voiced => "\u{006E}\u{033C}",
-                    ConsonantVoicing::Voiceless => return Err(std::fmt::Error),
-                },
-                ConsonantPlace::Aveolar => match v {
-                    ConsonantVoicing::Voiced => "\u{006E}",
-                    ConsonantVoicing::Voiceless => "\u{006E}\u{0325}",
-                },
-                ConsonantPlace::Retroflex => match v {
-                    ConsonantVoicing::Voiced => "\u{0273}",
-                    ConsonantVoicing::Voiceless => "\u{0273}\u{030A}",
-                },
-                ConsonantPlace::Palatal => match v {
-                    ConsonantVoicing::Voiced => "\u{0272}",
-                    ConsonantVoicing::Voiceless => "\u{0272}\u{030A}",
-                },
-                ConsonantPlace::Velar => match v {
-                    ConsonantVoicing::Voiced => "\u{014B}",
-                    ConsonantVoicing::Voiceless => "\u{014B}\u{030A}",
-                },
-                ConsonantPlace::Uvular => match v {
-                    ConsonantVoicing::Voiced => "\u{0274}",
-                    ConsonantVoicing::Voiceless => "\u{0274}\u{0325}",
-                },
-                _ => return Err(std::fmt::Error),
-            },
-            PulmonicConsonantManner::Plosive => match p {
-                ConsonantPlace::Bilabial => match v {
-                    ConsonantVoicing::Voiced => "\u{0062}",
-                    ConsonantVoicing::Voiceless => "\u{0070}",
-                },
-                ConsonantPlace::Labiodental => match v {
-                    ConsonantVoicing::Voiced => "\u{0062}\u{032A}",
-                    ConsonantVoicing::Voiceless => "\u{0070}\u{032A}",
-                },
-                ConsonantPlace::Linguolabial => match v {
-                    ConsonantVoicing::Voiced => "\u{0064}\u{033C}",
-                    ConsonantVoicing::Voiceless => "\u{0074}\u{033C}",
-                },
-                ConsonantPlace::Aveolar => match v {
-                    ConsonantVoicing::Voiced => "\u{0064}",
-                    ConsonantVoicing::Voiceless => "\u{0074}",
-                },
-                ConsonantPlace::Retroflex => match v {
-                    ConsonantVoicing::Voiced => "\u{0256}",
-                    ConsonantVoicing::Voiceless => "\u{0288}",
-                },
-                ConsonantPlace::Palatal => match v {
-                    ConsonantVoicing::Voiced => "\u{025F}",
-                    ConsonantVoicing::Voiceless => "\u{0063}",
-                },
-                ConsonantPlace::Velar => match v {
-                    ConsonantVoicing::Voiced => "\u{0261}",
-                    ConsonantVoicing::Voiceless => "\u{006B}",
-                },
-                ConsonantPlace::Uvular => match v {
-                    ConsonantVoicing::Voiced => "\u{0262}",
-                    ConsonantVoicing::Voiceless => "\u{0071}",
-                },
-                ConsonantPlace::Pharyngeal => match v {
-                    ConsonantVoicing::Voiced => return Err(std::fmt::Error),
-                    ConsonantVoicing::Voiceless => "\u{02A1}",
-                },
-                ConsonantPlace::Glottal => match v {
-                    ConsonantVoicing::Voiced => return Err(std::fmt::Error),
-                    ConsonantVoicing::Voiceless => "\u{0294}",
-                },
-                _ => return Err(std::fmt::Error),
-            },
-            PulmonicConsonantManner::SibilantFricative => match p {
-                ConsonantPlace::Aveolar => match v {
-                    ConsonantVoicing::Voiced => "\u{007A}",
-                    ConsonantVoicing::Voiceless => "\u{0073}",
-                },
-                ConsonantPlace::Postalveolar => match v {
-                    ConsonantVoicing::Voiced => "\u{0292}",
-                    ConsonantVoicing::Voiceless => "\u{0283}",
-                },
-                ConsonantPlace::Retroflex => match v {
-                    ConsonantVoicing::Voiced => "\u{0290}",
-                    ConsonantVoicing::Voiceless => "\u{0282}",
-                },
-                ConsonantPlace::Palatal => match v {
-                    ConsonantVoicing::Voiced => "\u{0291}",
-                    ConsonantVoicing::Voiceless => "\u{0255}",
-                },
-                _ => return Err(std::fmt::Error),
-            },
-            PulmonicConsonantManner::NonSibilantFricative => match p {
-                ConsonantPlace::Bilabial => match v {
-                    ConsonantVoicing::Voiced => "\u{03B2}",
-                    ConsonantVoicing::Voiceless => "\u{0278}",
-                },
-                ConsonantPlace::Labiodental => match v {
-                    ConsonantVoicing::Voiced => "\u{0076}",
-                    ConsonantVoicing::Voiceless => "\u{0066}",
-                },
-                ConsonantPlace::Linguolabial => match v {
-                    ConsonantVoicing::Voiced => "\u{00F0}\u{033C}",
-                    ConsonantVoicing::Voiceless => "\u{033C}\u{03B8}",
-                },
-                ConsonantPlace::Dental => match v {
-                    ConsonantVoicing::Voiced => "\u{00F0}",
-                    ConsonantVoicing::Voiceless => "\u{03B8}",
-                },
-                ConsonantPlace::Aveolar => match v {
-                    ConsonantVoicing::Voiced => "\u{00F0}\u{0331}",
-                    ConsonantVoicing::Voiceless => "\u{0331}\u{03B8}", // small theta has higher codepoint, so adjacent combining chars will combine to the right
-                },
-                ConsonantPlace::Postalveolar => match v {
-                    ConsonantVoicing::Voiced => "\u{0279}\u{0331}\u{02D4}",
-                    ConsonantVoicing::Voiceless => "\u{030A}\u{0279}\u{0331}\u{02D4}",
-                },
-                ConsonantPlace::Retroflex => match v {
-                    ConsonantVoicing::Voiced => "\u{027B}\u{02D4}",
-                    ConsonantVoicing::Voiceless => "\u{027B}\u{030A}\u{02D4}",
-                },
-                ConsonantPlace::Palatal => match v {
-                    ConsonantVoicing::Voiced => "\u{029D}",
-                    ConsonantVoicing::Voiceless => "\u{00E7}",
-                },
-                ConsonantPlace::Velar => match v {
-                    ConsonantVoicing::Voiced => "\u{0263}",
-                    ConsonantVoicing::Voiceless => "\u{0078}",
-                },
-                ConsonantPlace::Uvular => match v {
-                    ConsonantVoicing::Voiced => "\u{0281}",
-                    ConsonantVoicing::Voiceless => "\u{03C7}",
-                },
-                ConsonantPlace::Pharyngeal => match v {
-                    ConsonantVoicing::Voiced => "\u{0295}",
-                    ConsonantVoicing::Voiceless => "\u{0127}",
-                },
-                ConsonantPlace::Glottal => match v {
-                    ConsonantVoicing::Voiced => "\u{0266}",
-                    ConsonantVoicing::Voiceless => "\u{0068}",
-                },
-            },
-            PulmonicConsonantManner::Approximant => match p {
-                ConsonantPlace::Labiodental => match v {
-                    ConsonantVoicing::Voiced => "\u{028B}",
-                    ConsonantVoicing::Voiceless => return Err(std::fmt::Error),
-                },
-                ConsonantPlace::Aveolar => match v {
-                    ConsonantVoicing::Voiced => "\u{0279}",
-                    ConsonantVoicing::Voiceless => return Err(std::fmt::Error),
-                },
-                ConsonantPlace::Retroflex => match v {
-                    ConsonantVoicing::Voiced => "\u{027B}",
-                    ConsonantVoicing::Voiceless => return Err(std::fmt::Error),
-                },
-                ConsonantPlace::Palatal => match v {
-                    ConsonantVoicing::Voiced => "\u{006A}",
-                    ConsonantVoicing::Voiceless => return Err(std::fmt::Error),
-                },
-                ConsonantPlace::Velar => match v {
-                    ConsonantVoicing::Voiced => "\u{0270}",
-                    ConsonantVoicing::Voiceless => return Err(std::fmt::Error),
-                },
-                ConsonantPlace::Glottal => match v {
-                    ConsonantVoicing::Voiced => "\u{0294}\u{0330}",
-                    ConsonantVoicing::Voiceless => return Err(std::fmt::Error),
-                },
-                _ => return Err(std::fmt::Error),
-            },
-            _ => "#",
-        };
-
-        write!(f, "{str}")
+        if let Some(a) = CONSONANT_LIST
+            .iter()
+            .find(|(consonant, _)| self == consonant)
+            .map(|(_, chars)| chars.iter().collect::<String>())
+        {
+            write!(f, "{}", a)
+        } else {
+            Err(fmt::Error)
+        }
+    }
+}
+impl TryFrom<&str> for PulmonicConsonant {
+    type Error = ();
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        for (i, j) in CONSONANT_LIST.iter() {
+            if j.iter().all(|x| value.contains(*x)) {
+                return Ok(i.clone());
+            }
+        }
+        Err(())
     }
 }
 
+#[derive(PartialEq, Clone, Debug)]
 pub enum PulmonicConsonantManner {
     Nasal,
     Plosive,
@@ -817,6 +1244,7 @@ pub enum PulmonicConsonantManner {
     LateralTap,
 }
 
+#[derive(PartialEq, Clone, Debug)]
 pub enum ConsonantPlace {
     Bilabial,
     Labiodental,
@@ -832,6 +1260,7 @@ pub enum ConsonantPlace {
     Glottal, // Not in Non-pulmonic
 }
 
+#[derive(PartialEq, Clone, Debug)]
 pub enum ConsonantVoicing {
     Voiced,
     Voiceless,
