@@ -44,6 +44,24 @@
         {
             "type": "lldb",
             "request": "launch",
+            "name": "Debug executable 'ipa-test'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=ipa-example",
+                    "--package=rhymalize"
+                ],
+                "filter": {
+                    "name": "ipa-example",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
             "name": "Debug unit tests in executable 'rhymalize-example'",
             "cargo": {
                 "args": [

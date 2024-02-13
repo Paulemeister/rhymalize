@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 use core::fmt;
 use phf::{phf_map, Map};
+use unicode_segmentation::UnicodeSegmentation;
 
 const DIACRITIC_MAP: Map<char, Diacritic> = phf_map! {
     '\u{0329}'=>Diacritic::Syllabic,
@@ -29,7 +30,7 @@ const DIACRITIC_MAP: Map<char, Diacritic> = phf_map! {
     '\u{0304}'=>Diacritic::Retracted,
     '\u{0308}'=>Diacritic::Centralized,
     '\u{033D}'=>Diacritic::MidCentralized,
-    '\u{031D}'=>Diacritic::NonSyllabic,
+    '\u{031D}'=>Diacritic::Raised,
     '\u{02D4}'=>Diacritic::Raised,
     '\u{031E}'=>Diacritic::Lowered,
     '\u{02D5}'=>Diacritic::Lowered,
@@ -65,7 +66,7 @@ const SUPRASEGREMENTAL_MAP: Map<char, Suprasegmental> = phf_map! {
 
 };
 
-static CONSONANT_LIST: [(PulmonicConsonant, &[char]); 71] = [
+const CONSONANT_LIST: [(PulmonicConsonant, &[char]); 71] = [
     (
         PulmonicConsonant {
             manner: PulmonicConsonantManner::NonSibilantFricative,
@@ -104,7 +105,7 @@ static CONSONANT_LIST: [(PulmonicConsonant, &[char]); 71] = [
             place: ConsonantPlace::Labiodental,
             voicing: ConsonantVoicing::Voiceless,
         },
-        &['\u{006D}', '\u{006D}'],
+        &['\u{006D}'],
     ),
     (
         PulmonicConsonant {
@@ -636,9 +637,256 @@ static CONSONANT_LIST: [(PulmonicConsonant, &[char]); 71] = [
     ),
 ];
 
+const VOWEL_LIST: [(Vowel, &[char]); 27] = [
+    (
+        Vowel {
+            height: VowelHeight::Mid,
+            backness: VowelBackness::Back,
+            roundedness: VowelRoundedness::Rounded,
+        },
+        &['\u{006F}', '\u{031E}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::Mid,
+            backness: VowelBackness::Back,
+            roundedness: VowelRoundedness::Unrounded,
+        },
+        &['\u{0264}', '\u{031E}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::Mid,
+            backness: VowelBackness::Front,
+            roundedness: VowelRoundedness::Rounded,
+        },
+        &['\u{00F8}', '\u{031E}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::Mid,
+            backness: VowelBackness::Front,
+            roundedness: VowelRoundedness::Unrounded,
+        },
+        &['\u{0065}', '\u{031E}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::Open,
+            backness: VowelBackness::Central,
+            roundedness: VowelRoundedness::Unrounded,
+        },
+        &['\u{0061}', '\u{0308}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::Close,
+            backness: VowelBackness::Back,
+            roundedness: VowelRoundedness::Rounded,
+        },
+        &['\u{0075}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::Close,
+            backness: VowelBackness::Back,
+            roundedness: VowelRoundedness::Unrounded,
+        },
+        &['\u{026F}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::Close,
+            backness: VowelBackness::Central,
+            roundedness: VowelRoundedness::Rounded,
+        },
+        &['\u{0289}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::Close,
+            backness: VowelBackness::Central,
+            roundedness: VowelRoundedness::Unrounded,
+        },
+        &['\u{0268}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::Close,
+            backness: VowelBackness::Front,
+            roundedness: VowelRoundedness::Rounded,
+        },
+        &['\u{0079}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::Close,
+            backness: VowelBackness::Front,
+            roundedness: VowelRoundedness::Unrounded,
+        },
+        &['\u{0069}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::NearClose,
+            backness: VowelBackness::Back,
+            roundedness: VowelRoundedness::Rounded,
+        },
+        &['\u{028A}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::NearClose,
+            backness: VowelBackness::Front,
+            roundedness: VowelRoundedness::Rounded,
+        },
+        &['\u{028F}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::NearClose,
+            backness: VowelBackness::Front,
+            roundedness: VowelRoundedness::Unrounded,
+        },
+        &['\u{026A}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::CloseMid,
+            backness: VowelBackness::Back,
+            roundedness: VowelRoundedness::Rounded,
+        },
+        &['\u{006F}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::CloseMid,
+            backness: VowelBackness::Back,
+            roundedness: VowelRoundedness::Unrounded,
+        },
+        &['\u{006F}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::CloseMid,
+            backness: VowelBackness::Central,
+            roundedness: VowelRoundedness::Rounded,
+        },
+        &['\u{0275}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::CloseMid,
+            backness: VowelBackness::Central,
+            roundedness: VowelRoundedness::Unrounded,
+        },
+        &['\u{0258}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::CloseMid,
+            backness: VowelBackness::Front,
+            roundedness: VowelRoundedness::Rounded,
+        },
+        &['\u{00F8}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::CloseMid,
+            backness: VowelBackness::Front,
+            roundedness: VowelRoundedness::Unrounded,
+        },
+        &['\u{0065}'],
+    ),
+    (
+        // double check roundedness
+        Vowel {
+            height: VowelHeight::Mid,
+            backness: VowelBackness::Central,
+            roundedness: VowelRoundedness::Unrounded,
+        },
+        &['\u{0259}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::NearOpen,
+            backness: VowelBackness::Central,
+            roundedness: VowelRoundedness::Unrounded,
+        },
+        &['\u{0250}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::NearOpen,
+            backness: VowelBackness::Front,
+            roundedness: VowelRoundedness::Unrounded,
+        },
+        &['\u{00E6}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::Open,
+            backness: VowelBackness::Back,
+            roundedness: VowelRoundedness::Rounded,
+        },
+        &['\u{0252}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::Open,
+            backness: VowelBackness::Back,
+            roundedness: VowelRoundedness::Unrounded,
+        },
+        &['\u{0251}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::Open,
+            backness: VowelBackness::Front,
+            roundedness: VowelRoundedness::Rounded,
+        },
+        &['\u{0276}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::Open,
+            backness: VowelBackness::Front,
+            roundedness: VowelRoundedness::Unrounded,
+        },
+        &['\u{0061}'],
+    ),
+];
+
+#[derive(Debug)]
+pub struct Word(Vec<Letter>);
+
+impl TryFrom<&str> for Word {
+    // assumes diacritics are always behind their corresponding letters
+    type Error = ();
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let mut out = vec![];
+        let mut last = 0;
+
+        for grapheme in UnicodeSegmentation::graphemes(value, true) {
+            out.push(Letter::try_from(grapheme)?)
+        }
+
+        Ok(Self(out))
+    }
+}
+
+impl fmt::Display for Word {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let word_str = self.0.iter().map(|z| z.to_string()).collect::<String>();
+
+        write!(f, "{}", word_str)
+    }
+}
+
+#[derive(Debug)]
 pub struct Letter {
-    ipa_type: LetterType,
-    diacritics: Option<Vec<Diacritic>>,
+    pub ipa_type: LetterType,
+    pub diacritics: Option<Vec<Diacritic>>,
 }
 
 impl TryFrom<&str> for Letter {
@@ -659,10 +907,17 @@ impl TryFrom<&str> for Letter {
 
 impl fmt::Display for Letter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.ipa_type)
+        let dia_str = if let Some(a) = &self.diacritics {
+            a.iter().map(|z| z.to_string()).collect::<String>()
+        } else {
+            "".to_string()
+        };
+        let a = self.ipa_type.to_string() + &dia_str;
+        write!(f, "{}", a)
     }
 }
 
+#[derive(Debug)]
 pub enum LetterType {
     PulmonicConsonant(PulmonicConsonant),
     NonPulmonicConsonant,
@@ -679,6 +934,9 @@ impl TryFrom<&str> for LetterType {
         if let Ok(sup) = Suprasegmental::try_from(value) {
             return Ok(Self::Suprasegmental(sup));
         }
+        if let Ok(cons) = PulmonicConsonant::try_from(value) {
+            return Ok(Self::PulmonicConsonant(cons));
+        }
         Err(())
     }
 }
@@ -689,6 +947,7 @@ impl fmt::Display for LetterType {
             f,
             "{}",
             match self {
+                LetterType::Suprasegmental(s) => s.to_string(),
                 LetterType::PulmonicConsonant(p) => p.to_string(),
                 LetterType::Vowel(v) => v.to_string(),
                 _ => return Err(fmt::Error),
@@ -697,7 +956,7 @@ impl fmt::Display for LetterType {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Diacritic {
     Syllabic,
     NonSyllabic,
@@ -754,7 +1013,7 @@ impl fmt::Display for Diacritic {
         }
     }
 }
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum Suprasegmental {
     PrimaryStress,
     SecondaryStress,
@@ -795,13 +1054,38 @@ impl TryFrom<&str> for Suprasegmental {
     }
 }
 
-#[derive(PartialEq, Clone)]
+impl std::fmt::Display for Vowel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(a) = VOWEL_LIST
+            .iter()
+            .find(|(consonant, _)| self == consonant)
+            .map(|(_, chars)| chars.iter().collect::<String>())
+        {
+            write!(f, "{}", a)
+        } else {
+            Err(fmt::Error)
+        }
+    }
+}
+impl TryFrom<&str> for Vowel {
+    type Error = ();
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        for (i, j) in VOWEL_LIST.iter() {
+            if j.iter().all(|x| value.contains(*x)) {
+                return Ok(i.clone());
+            }
+        }
+        Err(())
+    }
+}
+
+#[derive(PartialEq, Clone, Debug)]
 pub struct ChaoToneLetter {
     contour: Vec<ChaoToneLetterHeight>,
     reversed: bool,
 }
 
-#[derive(Eq, PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum ChaoToneLetterHeight {
     ExtraHigh,
     High,
@@ -810,7 +1094,7 @@ pub enum ChaoToneLetterHeight {
     ExtraLow,
 }
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum PitchDiacritic {
     ExtraHigh,
     High,
@@ -827,336 +1111,14 @@ pub enum PitchDiacritic {
     MidFalling,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct Vowel {
     pub height: VowelHeight,
     pub backness: VowelBackness,
     pub roundedness: VowelRoundedness,
 }
 
-impl std::fmt::Display for Vowel {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Vowel {
-            height: h,
-            backness: b,
-            roundedness: r,
-        } = self;
-        let str = match h {
-            VowelHeight::Close => match b {
-                VowelBackness::Back => match r {
-                    VowelRoundedness::Rounded => "\u{0075}",
-                    VowelRoundedness::Unrounded => "\u{026F}",
-                },
-                VowelBackness::Central => match r {
-                    VowelRoundedness::Rounded => "\u{0289}",
-                    VowelRoundedness::Unrounded => "\u{0268}",
-                },
-                VowelBackness::Front => match r {
-                    VowelRoundedness::Rounded => "\u{0079}",
-                    VowelRoundedness::Unrounded => "\u{0069}",
-                },
-            },
-            VowelHeight::NearClose => match b {
-                VowelBackness::Back => match r {
-                    VowelRoundedness::Rounded => "\u{028A}",
-                    VowelRoundedness::Unrounded => return Err(std::fmt::Error),
-                },
-                VowelBackness::Central => return Err(std::fmt::Error),
-                VowelBackness::Front => match r {
-                    VowelRoundedness::Rounded => "\u{028F}",
-                    VowelRoundedness::Unrounded => "\u{026A}",
-                },
-            },
-            VowelHeight::CloseMid => match b {
-                VowelBackness::Back => match r {
-                    VowelRoundedness::Rounded => "\u{006F}",
-                    VowelRoundedness::Unrounded => "\u{0264}",
-                },
-                VowelBackness::Central => match r {
-                    VowelRoundedness::Rounded => "\u{0275}",
-                    VowelRoundedness::Unrounded => "\u{0258}",
-                },
-                VowelBackness::Front => match r {
-                    VowelRoundedness::Rounded => "\u{00F8}",
-                    VowelRoundedness::Unrounded => "\u{0065}",
-                },
-            },
-            VowelHeight::Mid => match b {
-                VowelBackness::Back => match r {
-                    VowelRoundedness::Rounded => "\u{006F}\u{031E}",
-                    VowelRoundedness::Unrounded => "\u{0264}\u{031E}",
-                },
-                VowelBackness::Central => "\u{0259}",
-                VowelBackness::Front => match r {
-                    VowelRoundedness::Rounded => "\u{00F8}\u{031E}",
-                    VowelRoundedness::Unrounded => "\u{0065}\u{031E}",
-                },
-            },
-            VowelHeight::OpenMid => match b {
-                VowelBackness::Back => match r {
-                    VowelRoundedness::Rounded => "\u{0254}",
-                    VowelRoundedness::Unrounded => "\u{028C}",
-                },
-                VowelBackness::Central => match r {
-                    VowelRoundedness::Rounded => "\u{025E}",
-                    VowelRoundedness::Unrounded => "\u{025C}",
-                },
-                VowelBackness::Front => match r {
-                    VowelRoundedness::Rounded => "\u{0153}",
-                    VowelRoundedness::Unrounded => "\u{025B}",
-                },
-            },
-            VowelHeight::NearOpen => match b {
-                VowelBackness::Back => return Err(std::fmt::Error),
-                VowelBackness::Central => "\u{0250}",
-                VowelBackness::Front => "\u{00E6}",
-            },
-            VowelHeight::Open => match b {
-                VowelBackness::Back => match r {
-                    VowelRoundedness::Rounded => "\u{0252}",
-                    VowelRoundedness::Unrounded => "\u{0251}",
-                },
-                VowelBackness::Central => match r {
-                    VowelRoundedness::Rounded => return Err(std::fmt::Error),
-                    VowelRoundedness::Unrounded => "\u{0061}\u{0308}",
-                },
-                VowelBackness::Front => match r {
-                    VowelRoundedness::Rounded => "\u{0276}",
-                    VowelRoundedness::Unrounded => "\u{0061}",
-                },
-            },
-        };
-        write!(f, "{}", str)
-    }
-}
-
-impl TryFrom<&str> for Vowel {
-    type Error = ();
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        Ok(
-            //// multiple conditions first
-            if value.contains('\u{0061}') && value.contains('\u{0308}') {
-                // account for ä as one char?
-                Vowel {
-                    height: VowelHeight::Open,
-                    backness: VowelBackness::Central,
-                    roundedness: VowelRoundedness::Unrounded,
-                }
-            } else if value.contains('\u{006F}') && value.contains('\u{031E}') {
-                Vowel {
-                    height: VowelHeight::Mid,
-                    backness: VowelBackness::Back,
-                    roundedness: VowelRoundedness::Rounded,
-                }
-            } else if value.contains('\u{0264}') && value.contains('\u{031E}') {
-                Vowel {
-                    height: VowelHeight::Mid,
-                    backness: VowelBackness::Back,
-                    roundedness: VowelRoundedness::Unrounded,
-                }
-            } else if value.contains('\u{00F8}') && value.contains('\u{031E}') {
-                Vowel {
-                    height: VowelHeight::Mid,
-                    backness: VowelBackness::Front,
-                    roundedness: VowelRoundedness::Rounded,
-                }
-            } else if value.contains('\u{0065}') && value.contains('\u{031E}') {
-                Vowel {
-                    height: VowelHeight::Mid,
-                    backness: VowelBackness::Front,
-                    roundedness: VowelRoundedness::Unrounded,
-                }
-            }
-            /////////////
-            else if value.contains('\u{0075}') {
-                Vowel {
-                    height: VowelHeight::Close,
-                    backness: VowelBackness::Back,
-                    roundedness: VowelRoundedness::Rounded,
-                }
-            } else if value.contains('\u{026F}') {
-                Vowel {
-                    height: VowelHeight::Close,
-                    backness: VowelBackness::Back,
-                    roundedness: VowelRoundedness::Unrounded,
-                }
-            } else if value.contains('\u{0289}') {
-                Vowel {
-                    height: VowelHeight::Close,
-                    backness: VowelBackness::Central,
-                    roundedness: VowelRoundedness::Rounded,
-                }
-            } else if value.contains('\u{0268}') {
-                Vowel {
-                    height: VowelHeight::Close,
-                    backness: VowelBackness::Central,
-                    roundedness: VowelRoundedness::Unrounded,
-                }
-            } else if value.contains('\u{0079}') {
-                Vowel {
-                    height: VowelHeight::Close,
-                    backness: VowelBackness::Front,
-                    roundedness: VowelRoundedness::Rounded,
-                }
-            } else if value.contains('\u{0069}') {
-                Vowel {
-                    height: VowelHeight::Close,
-                    backness: VowelBackness::Front,
-                    roundedness: VowelRoundedness::Unrounded,
-                }
-            }
-            /////////////////////////////
-            else if value.contains('\u{028A}') {
-                Vowel {
-                    height: VowelHeight::NearClose,
-                    backness: VowelBackness::Back,
-                    roundedness: VowelRoundedness::Rounded,
-                }
-            } else if value.contains('\u{028F}') {
-                Vowel {
-                    height: VowelHeight::NearClose,
-                    backness: VowelBackness::Front,
-                    roundedness: VowelRoundedness::Rounded,
-                }
-            } else if value.contains('\u{026A}') {
-                Vowel {
-                    height: VowelHeight::NearClose,
-                    backness: VowelBackness::Front,
-                    roundedness: VowelRoundedness::Unrounded,
-                }
-            }
-            ///////////////
-            else if value.contains('\u{006F}') {
-                Vowel {
-                    height: VowelHeight::CloseMid,
-                    backness: VowelBackness::Back,
-                    roundedness: VowelRoundedness::Rounded,
-                }
-            } else if value.contains('\u{0264}') {
-                Vowel {
-                    height: VowelHeight::CloseMid,
-                    backness: VowelBackness::Back,
-                    roundedness: VowelRoundedness::Unrounded,
-                }
-            } else if value.contains('\u{0275}') {
-                Vowel {
-                    height: VowelHeight::CloseMid,
-                    backness: VowelBackness::Central,
-                    roundedness: VowelRoundedness::Rounded,
-                }
-            } else if value.contains('\u{0258}') {
-                Vowel {
-                    height: VowelHeight::CloseMid,
-                    backness: VowelBackness::Central,
-                    roundedness: VowelRoundedness::Unrounded,
-                }
-            } else if value.contains('\u{00F8}') {
-                Vowel {
-                    height: VowelHeight::CloseMid,
-                    backness: VowelBackness::Front,
-                    roundedness: VowelRoundedness::Rounded,
-                }
-            } else if value.contains('\u{0065}') {
-                Vowel {
-                    height: VowelHeight::CloseMid,
-                    backness: VowelBackness::Front,
-                    roundedness: VowelRoundedness::Unrounded,
-                }
-            }
-            ////////////////
-            else if value.contains('\u{0259}') {
-                Vowel {
-                    height: VowelHeight::Mid,
-                    backness: VowelBackness::Central,
-                    roundedness: VowelRoundedness::Rounded,
-                }
-            }
-            ///////////
-            else if value.contains('\u{0254}') {
-                Vowel {
-                    height: VowelHeight::OpenMid,
-                    backness: VowelBackness::Back,
-                    roundedness: VowelRoundedness::Rounded,
-                }
-            } else if value.contains('\u{028C}') {
-                Vowel {
-                    height: VowelHeight::OpenMid,
-                    backness: VowelBackness::Back,
-                    roundedness: VowelRoundedness::Unrounded,
-                }
-            } else if value.contains('\u{025E}') {
-                Vowel {
-                    height: VowelHeight::OpenMid,
-                    backness: VowelBackness::Central,
-                    roundedness: VowelRoundedness::Rounded,
-                }
-            } else if value.contains('\u{025C}') {
-                Vowel {
-                    height: VowelHeight::OpenMid,
-                    backness: VowelBackness::Central,
-                    roundedness: VowelRoundedness::Unrounded,
-                }
-            } else if value.contains('\u{0153}') {
-                Vowel {
-                    height: VowelHeight::OpenMid,
-                    backness: VowelBackness::Front,
-                    roundedness: VowelRoundedness::Rounded,
-                }
-            } else if value.contains('\u{025B}') {
-                Vowel {
-                    height: VowelHeight::OpenMid,
-                    backness: VowelBackness::Front,
-                    roundedness: VowelRoundedness::Unrounded,
-                }
-            }
-            ///////////
-            else if value.contains('\u{0252}') {
-                Vowel {
-                    ////////one possiblility
-                    height: VowelHeight::NearOpen,
-                    backness: VowelBackness::Central,
-                    roundedness: VowelRoundedness::Unrounded,
-                }
-            } else if value.contains('\u{00E6}') {
-                Vowel {
-                    ////////one possiblility
-                    height: VowelHeight::NearOpen,
-                    backness: VowelBackness::Front,
-                    roundedness: VowelRoundedness::Unrounded,
-                }
-            }
-            ///////////
-            else if value.contains('\u{0252}') {
-                Vowel {
-                    height: VowelHeight::Open,
-                    backness: VowelBackness::Back,
-                    roundedness: VowelRoundedness::Rounded,
-                }
-            } else if value.contains('\u{0251}') {
-                Vowel {
-                    height: VowelHeight::Open,
-                    backness: VowelBackness::Back,
-                    roundedness: VowelRoundedness::Unrounded,
-                }
-            } else if value.contains('\u{0276}') {
-                Vowel {
-                    height: VowelHeight::Open,
-                    backness: VowelBackness::Front,
-                    roundedness: VowelRoundedness::Rounded,
-                }
-            } else if value.contains('\u{0061}') {
-                Vowel {
-                    height: VowelHeight::Open,
-                    backness: VowelBackness::Front,
-                    roundedness: VowelRoundedness::Unrounded,
-                }
-            } else {
-                return Err(());
-            },
-        )
-    }
-}
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum VowelHeight {
     Close,
     NearClose,
@@ -1167,13 +1129,13 @@ pub enum VowelHeight {
     Open,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum VowelBackness {
     Front,
     Central,
     Back,
 }
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum VowelRoundedness {
     Unrounded,
     Rounded,
@@ -1186,23 +1148,6 @@ pub struct PulmonicConsonant {
     pub voicing: ConsonantVoicing,
     // exception, as sometimes voiceless consonant has different symbol
     // otherwise it should be a diacritic
-}
-
-fn test(s: &PulmonicConsonant) -> Result<String, ()> {
-    let a: Option<String> = CONSONANT_LIST
-        .iter()
-        .find(|(consonant, _)| s == consonant)
-        .map(|(_, chars)| chars.iter().collect());
-    a.ok_or(())
-}
-
-fn test2(text: &str) -> Result<PulmonicConsonant, ()> {
-    for (i, j) in CONSONANT_LIST.iter() {
-        if j.iter().all(|x| text.contains(*x)) {
-            return Ok(i.clone());
-        }
-    }
-    Err(())
 }
 
 impl std::fmt::Display for PulmonicConsonant {

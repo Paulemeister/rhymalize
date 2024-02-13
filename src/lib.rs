@@ -4,7 +4,7 @@ pub mod ipa_utils;
 mod tests {
     use super::ipa_utils::ipa::*;
     #[test]
-    fn test_ipa_display() {
+    fn vowel_display() {
         let one = Vowel {
             height: VowelHeight::Close,
             backness: VowelBackness::Front,
@@ -49,5 +49,29 @@ mod tests {
                 voicing: ConsonantVoicing::Voiceless,
             }
         )
+    }
+    #[test]
+    fn letter_display() {
+        let one = Letter {
+            ipa_type: LetterType::Vowel(Vowel {
+                height: VowelHeight::Open,
+                backness: VowelBackness::Back,
+                roundedness: VowelRoundedness::Unrounded,
+            }),
+            diacritics: Some(vec![Diacritic::Nasalized]),
+        };
+        let two = Letter {
+            ipa_type: LetterType::PulmonicConsonant(PulmonicConsonant {
+                manner: PulmonicConsonantManner::NonSibilantFricative,
+                place: ConsonantPlace::Postalveolar,
+                voicing: ConsonantVoicing::Voiceless,
+            }),
+            diacritics: None,
+        };
+        assert_eq!(one.to_string(), String::from("ɑ̃"));
+        assert_eq!(
+            two.to_string(),
+            String::from("\u{030A}\u{0279}\u{0331}\u{02D4}")
+        );
     }
 }
