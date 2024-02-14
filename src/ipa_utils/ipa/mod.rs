@@ -1,7 +1,10 @@
 #![allow(dead_code)]
 use core::fmt;
 use phf::{phf_map, Map};
+use std::vec;
 use unicode_segmentation::UnicodeSegmentation;
+
+pub mod english;
 
 const DIACRITIC_MAP: Map<char, Diacritic> = phf_map! {
     '\u{0329}'=>Diacritic::Syllabic,
@@ -637,7 +640,7 @@ const CONSONANT_LIST: [(PulmonicConsonant, &[char]); 71] = [
     ),
 ];
 
-const VOWEL_LIST: [(Vowel, &[char]); 27] = [
+const VOWEL_LIST: [(Vowel, &[char]); 33] = [
     (
         Vowel {
             height: VowelHeight::Mid,
@@ -799,6 +802,54 @@ const VOWEL_LIST: [(Vowel, &[char]); 27] = [
         &['\u{0065}'],
     ),
     (
+        Vowel {
+            height: VowelHeight::OpenMid,
+            backness: VowelBackness::Front,
+            roundedness: VowelRoundedness::Rounded,
+        },
+        &['\u{0153}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::OpenMid,
+            backness: VowelBackness::Front,
+            roundedness: VowelRoundedness::Unrounded,
+        },
+        &['\u{025B}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::OpenMid,
+            backness: VowelBackness::Central,
+            roundedness: VowelRoundedness::Rounded,
+        },
+        &['\u{025E}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::OpenMid,
+            backness: VowelBackness::Central,
+            roundedness: VowelRoundedness::Unrounded,
+        },
+        &['\u{025C}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::OpenMid,
+            backness: VowelBackness::Back,
+            roundedness: VowelRoundedness::Rounded,
+        },
+        &['\u{0254}'],
+    ),
+    (
+        Vowel {
+            height: VowelHeight::OpenMid,
+            backness: VowelBackness::Back,
+            roundedness: VowelRoundedness::Unrounded,
+        },
+        &['\u{028C}'],
+    ),
+    (
         // double check roundedness
         Vowel {
             height: VowelHeight::Mid,
@@ -857,6 +908,154 @@ const VOWEL_LIST: [(Vowel, &[char]); 27] = [
     ),
 ];
 
+pub trait SyllableRule {
+    fn is_allowed_neighbour(&self, first: &Letter, second: &Letter) -> bool;
+    fn is_diphthong(&self, first: &Letter, second: &Letter) -> bool;
+}
+
+#[derive(Debug, Clone)]
+pub struct Syllable {
+    pub onset: Vec<Letter>,
+    pub nucleus: Vec<Letter>,
+    pub coda: Vec<Letter>,
+}
+
+impl fmt::Display for Syllable {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let onset_str: String = self.onset.iter().map(|x| x.to_string()).collect();
+        let nucleus_str: String = self.nucleus.iter().map(|x| x.to_string()).collect();
+        let coda_str: String = self.coda.iter().map(|x| x.to_string()).collect();
+        write!(f, "{onset_str}{nucleus_str}{coda_str}")
+    }
+}
+
+pub fn syls_from_word(input: &Word, options: &dyn SyllableRule) -> Vec<Syllable> {
+    let mut out = vec![];
+    let mut onset = vec![];
+    let mut nucleus = vec![];
+    let mut coda = vec![];
+    let mut last = input.0.last().unwrap();
+    let mut found_nuc = match last {
+        Letter {
+            ipa_type: LetterType::Vowel(_),
+            diacritics: _,
+        } => {
+            nucleus.push(last.clone());
+            true
+        }
+        _ => {
+            coda.push(last.clone());
+            false
+        }
+    };
+    for letter in input.0.iter().rev().skip(1) {
+        match (letter, last) {
+            (
+                Letter {
+                    ipa_type: LetterType::Vowel(_),
+                    diacritics: _,
+                },
+                Letter {
+                    ipa_type: LetterType::Vowel(_),
+                    diacritics: _,
+                },
+            ) => {
+                if !options.is_diphthong(letter, last) {
+                    onset.reverse();
+                    nucleus.reverse();
+                    coda.reverse();
+                    out.push(Syllable {
+                        onset,
+                        nucleus,
+                        coda,
+                    });
+                    onset = vec![];
+                    nucleus = vec![letter.clone()];
+                    coda = vec![];
+                    found_nuc = true
+                } else {
+                    nucleus.push(letter.clone());
+                }
+            }
+            (
+                Letter {
+                    ipa_type: LetterType::PulmonicConsonant(_) | LetterType::Suprasegmental(_),
+                    diacritics: _,
+                },
+                Letter {
+                    ipa_type: LetterType::PulmonicConsonant(_) | LetterType::Suprasegmental(_),
+                    diacritics: _,
+                },
+            ) => {
+                if !options.is_allowed_neighbour(letter, last) {
+                    onset.reverse();
+                    nucleus.reverse();
+                    coda.reverse();
+                    out.push(Syllable {
+                        onset,
+                        nucleus,
+                        coda,
+                    });
+                    onset = vec![];
+                    nucleus = vec![];
+                    coda = vec![letter.clone()];
+                    found_nuc = false;
+                } else if found_nuc {
+                    onset.push(letter.clone());
+                } else {
+                    coda.push(letter.clone());
+                }
+            }
+            (
+                Letter {
+                    ipa_type: LetterType::Vowel(_),
+                    diacritics: _,
+                },
+                _,
+            ) => {
+                if found_nuc {
+                    onset.reverse();
+                    nucleus.reverse();
+                    coda.reverse();
+                    out.push(Syllable {
+                        onset,
+                        nucleus,
+                        coda,
+                    });
+                    onset = vec![];
+                    nucleus = vec![letter.clone()];
+                    coda = vec![];
+                    found_nuc = true;
+                } else {
+                    nucleus.push(letter.clone());
+                    found_nuc = true;
+                }
+            }
+            _ => {
+                if found_nuc {
+                    onset.push(letter.clone());
+                } else {
+                    coda.push(letter.clone());
+                }
+            }
+        }
+        last = letter;
+    }
+    if found_nuc {
+        onset.reverse();
+        nucleus.reverse();
+        coda.reverse();
+        out.push(Syllable {
+            onset,
+            nucleus,
+            coda,
+        });
+    }
+
+    out.reverse();
+    out
+}
+
 #[derive(Debug)]
 pub struct Word(Vec<Letter>);
 
@@ -865,7 +1064,6 @@ impl TryFrom<&str> for Word {
     type Error = ();
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         let mut out = vec![];
-        let mut last = 0;
 
         for grapheme in UnicodeSegmentation::graphemes(value, true) {
             out.push(Letter::try_from(grapheme)?)
@@ -883,7 +1081,7 @@ impl fmt::Display for Word {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Letter {
     pub ipa_type: LetterType,
     pub diacritics: Option<Vec<Diacritic>>,
@@ -917,7 +1115,7 @@ impl fmt::Display for Letter {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum LetterType {
     PulmonicConsonant(PulmonicConsonant),
     NonPulmonicConsonant,

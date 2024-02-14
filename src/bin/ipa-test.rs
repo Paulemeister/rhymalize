@@ -1,4 +1,7 @@
-use rhymalize::ipa_utils::ipa::*;
+use rhymalize::ipa_utils::{
+    self,
+    ipa::{self, *},
+};
 
 fn main() {
     // let ipa_stings = ["\u{0065}\u{031E}", "\u{0061}\u{0308}", "\u{0251}"];
@@ -23,10 +26,14 @@ fn main() {
 
     // let b = Letter::try_from("ɑ̃").unwrap();
     // println!("{b} {b:?}");
-    let w1 = "ɡ̊uːt";
-    let w2 = "ˈʃtuːdi̯ʊm";
-    let w3 = "ˈʃtuːdi̝ʊm";
-    let a = Word::try_from(w2).unwrap();
+    let words = ["ɡ̊uːt", "ˈʃtuːdi̯ʊm", "ɔʁt", "ˈkeɪ.ɒs"];
 
-    println!("{a}");
+    let a = Word::try_from(words[1]).unwrap();
+    let opts = ipa_utils::ipa::english::EnglishSyllableRule {};
+    let b = syls_from_word(&a, &opts);
+    //println!("{a:?}");
+    println!("{b:?}");
+    for i in b {
+        println!("{:#?}", i.nucleus);
+    }
 }
