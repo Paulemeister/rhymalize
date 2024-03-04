@@ -32,8 +32,8 @@ fn main() {
     let opts = ipa_utils::ipa::english::EnglishSyllableRule {};
     let b = syls_from_word(&a, &opts);
     //println!("{a:?}");
-    println!("{b:?}");
+    //println!("{b:?}");
     for i in b {
-        println!("{:#?}", i.nucleus);
+        println!("{}", i);
     }
 }

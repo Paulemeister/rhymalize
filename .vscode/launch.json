@@ -62,6 +62,43 @@
         {
             "type": "lldb",
             "request": "launch",
+            "name": "Debug executable 'ipa-cli'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=ipa-cli",
+                    "--package=rhymalize"
+                ],
+                "filter": {
+                    "name": "ipa-cli",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'rhymalize-gui'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=rhymalize-gui",
+                    "--package=rhymalize"
+                ],
+                "filter": {
+                    "name": "rhymalize-gui",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
             "name": "Debug unit tests in executable 'rhymalize-example'",
             "cargo": {
                 "args": [

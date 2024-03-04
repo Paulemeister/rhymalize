@@ -69,7 +69,7 @@ const SUPRASEGREMENTAL_MAP: Map<char, Suprasegmental> = phf_map! {
 
 };
 
-const CONSONANT_LIST: [(PulmonicConsonant, &[char]); 71] = [
+const CONSONANT_LIST: [(PulmonicConsonant, &[char]); 81] = [
     (
         PulmonicConsonant {
             manner: PulmonicConsonantManner::NonSibilantFricative,
@@ -638,6 +638,91 @@ const CONSONANT_LIST: [(PulmonicConsonant, &[char]); 71] = [
         },
         &['\u{0270}'],
     ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Tap,
+            place: ConsonantPlace::Bilabial,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{2C71}', '\u{031F}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Tap,
+            place: ConsonantPlace::Labiodental,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{2C71}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Tap,
+            place: ConsonantPlace::Linguolabial,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{027E}', '\u{033C}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Tap,
+            place: ConsonantPlace::Aveolar,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{027E}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Tap,
+            place: ConsonantPlace::Aveolar,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{027E}', '\u{0325}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Tap,
+            place: ConsonantPlace::Retroflex,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{027D}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Tap,
+            place: ConsonantPlace::Retroflex,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{027D}', '\u{030A}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Tap,
+            place: ConsonantPlace::Uvular,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0262}', '\u{0306}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Tap,
+            place: ConsonantPlace::Pharyngeal,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{02A1}', '\u{0306}'],
+    ),
+    /// too lazy
+    ///
+    ///
+    ///
+    ///
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::LateralApproximant,
+            place: ConsonantPlace::Aveolar,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{006C}'],
+    ),
 ];
 
 const VOWEL_LIST: [(Vowel, &[char]); 33] = [
@@ -908,6 +993,8 @@ const VOWEL_LIST: [(Vowel, &[char]); 33] = [
     ),
 ];
 
+const SPECIAL_LIST: [(char, &str); 1] = [('ɫ', "l\u{02E0}")];
+
 pub trait SyllableRule {
     fn is_allowed_neighbour(&self, first: &Letter, second: &Letter) -> bool;
     fn is_diphthong(&self, first: &Letter, second: &Letter) -> bool;
@@ -926,6 +1013,12 @@ impl fmt::Display for Syllable {
         let nucleus_str: String = self.nucleus.iter().map(|x| x.to_string()).collect();
         let coda_str: String = self.coda.iter().map(|x| x.to_string()).collect();
         write!(f, "{onset_str}{nucleus_str}{coda_str}")
+    }
+}
+
+impl From<Word> for Vec<Letter> {
+    fn from(value: Word) -> Self {
+        value.0
     }
 }
 
@@ -1056,7 +1149,7 @@ pub fn syls_from_word(input: &Word, options: &dyn SyllableRule) -> Vec<Syllable>
     out
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Word(Vec<Letter>);
 
 impl TryFrom<&str> for Word {
@@ -1066,6 +1159,9 @@ impl TryFrom<&str> for Word {
         let mut out = vec![];
 
         for grapheme in UnicodeSegmentation::graphemes(value, true) {
+            if grapheme == "/" {
+                continue;
+            }
             out.push(Letter::try_from(grapheme)?)
         }
 
@@ -1090,6 +1186,11 @@ pub struct Letter {
 impl TryFrom<&str> for Letter {
     type Error = ();
     fn try_from(value: &str) -> Result<Self, Self::Error> {
+        for (special, replace) in SPECIAL_LIST {
+            if value.contains(special) {
+                return Self::try_from(replace);
+            }
+        }
         let diacritics = get_diacritics(value);
         let ipa_type = LetterType::try_from(value)?;
         Ok(Self {

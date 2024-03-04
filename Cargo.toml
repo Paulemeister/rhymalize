@@ -22,6 +22,17 @@ name = "ipa-example"
 version = "0.1.0"
 path = "src/bin/ipa-test.rs"
 
+[[bin]]
+name = "ipa-cli"
+version = "0.1.0"
+path = "src/bin/ipa-cli.rs"
+
+[[bin]]
+name = "rhymalize-gui"
+version = "0.1.0"
+path = "src/bin/rhymalize-gui.rs"
+
+
 [dependencies]
 reqwest = {version = "0.11", features = ["blocking"]}
 regex = "1.5"
@@ -29,3 +40,4 @@ serde_json = "1.0"
 anyhow = "1.0.71"
 phf = { version = "0.11.2", features = ["macros"] }
 unicode-segmentation = "1.11.0"
+iced = {version="0.12.0",features = ["advanced"]}
