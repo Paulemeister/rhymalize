@@ -42,7 +42,7 @@ impl Sandbox for App {
                     ("the", vec!["/ˈðə/", "/ðə/", "/ði/"]),
                     ("drug", vec!["/ˈdɹəɡ/"]),
                     ("of", vec!["/ˈəv/"]),
-                    ("choice/n", vec!["/ˈtʃɔɪs/"]),
+                    ("choice", vec!["/ˈtʃɔɪs/"]),
                 ],
                 vec![
                     ("Knockin'", vec!["/ˈnɑkɪŋ/"]),
@@ -66,7 +66,7 @@ impl Sandbox for App {
                         text: word.to_string(),
                         syllables: Some(
                             syls_from_word(
-                                &Word::try_from(ipas[0]).unwrap_or(Word::default()),
+                                &Word::try_from(ipas[0]).unwrap_or(Word::default()), // use first possible pronunciation
                                 &ipa_utils::ipa::english::EnglishSyllableRule,
                             )
                             .iter()

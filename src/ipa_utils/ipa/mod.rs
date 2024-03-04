@@ -69,7 +69,7 @@ const SUPRASEGREMENTAL_MAP: Map<char, Suprasegmental> = phf_map! {
 
 };
 
-const CONSONANT_LIST: [(PulmonicConsonant, &[char]); 81] = [
+const PULMONIC_CONSONANT_LIST: [(PulmonicConsonant, &[char]); 111] = [
     (
         PulmonicConsonant {
             manner: PulmonicConsonantManner::NonSibilantFricative,
@@ -710,11 +710,166 @@ const CONSONANT_LIST: [(PulmonicConsonant, &[char]); 81] = [
         },
         &['\u{02A1}', '\u{0306}'],
     ),
-    /// too lazy
-    ///
-    ///
-    ///
-    ///
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Trill,
+            place: ConsonantPlace::Bilabial,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0299}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Trill,
+            place: ConsonantPlace::Bilabial,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{0299}', '\u{0325}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Trill,
+            place: ConsonantPlace::Aveolar,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0072}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Trill,
+            place: ConsonantPlace::Aveolar,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{0072}', '\u{0325}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Trill,
+            place: ConsonantPlace::Retroflex,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{027D}', '\u{0072}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Trill,
+            place: ConsonantPlace::Retroflex,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{027D}', '\u{030A}', '\u{0072}', '\u{0325}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Trill,
+            place: ConsonantPlace::Uvular,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{0280}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Trill,
+            place: ConsonantPlace::Uvular,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{0280}', '\u{0325}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Trill,
+            place: ConsonantPlace::Pharyngeal,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{02A2}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::Trill,
+            place: ConsonantPlace::Pharyngeal,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{029C}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::LateralFricative,
+            place: ConsonantPlace::Aveolar,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{026E}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::LateralFricative,
+            place: ConsonantPlace::Aveolar,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{026C}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::LateralFricative,
+            place: ConsonantPlace::Retroflex,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{1DF05}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::LateralFricative,
+            place: ConsonantPlace::Retroflex,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{A78E}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::LateralFricative,
+            place: ConsonantPlace::Palatal,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{028E}', '\u{031D}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::LateralFricative,
+            place: ConsonantPlace::Palatal,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{1DF06}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::LateralFricative,
+            place: ConsonantPlace::Palatal,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{029F}', '\u{031D}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::LateralFricative,
+            place: ConsonantPlace::Palatal,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{1DF04}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::LateralFricative,
+            place: ConsonantPlace::Palatal,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{029F}', '\u{031D}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::LateralFricative,
+            place: ConsonantPlace::Palatal,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{1DF04}'],
+    ),
     (
         PulmonicConsonant {
             manner: PulmonicConsonantManner::LateralApproximant,
@@ -722,6 +877,86 @@ const CONSONANT_LIST: [(PulmonicConsonant, &[char]); 81] = [
             voicing: ConsonantVoicing::Voiced,
         },
         &['\u{006C}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::LateralApproximant,
+            place: ConsonantPlace::Retroflex,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{026D}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::LateralApproximant,
+            place: ConsonantPlace::Palatal,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{028E}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::LateralApproximant,
+            place: ConsonantPlace::Velar,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{029F}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::LateralApproximant,
+            place: ConsonantPlace::Uvular,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{029F}', '\u{0320}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::LateralTap,
+            place: ConsonantPlace::Aveolar,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{027A}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::LateralTap,
+            place: ConsonantPlace::Aveolar,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{027A}', '\u{0325}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::LateralTap,
+            place: ConsonantPlace::Retroflex,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{1DF08}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::LateralTap,
+            place: ConsonantPlace::Retroflex,
+            voicing: ConsonantVoicing::Voiceless,
+        },
+        &['\u{1DF08}', '\u{0325}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::LateralTap,
+            place: ConsonantPlace::Palatal,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{028E}', '\u{0306}'],
+    ),
+    (
+        PulmonicConsonant {
+            manner: PulmonicConsonantManner::LateralTap,
+            place: ConsonantPlace::Velar,
+            voicing: ConsonantVoicing::Voiced,
+        },
+        &['\u{029F}', '\u{0306}'],
     ),
 ];
 
@@ -1451,7 +1686,7 @@ pub struct PulmonicConsonant {
 
 impl std::fmt::Display for PulmonicConsonant {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(a) = CONSONANT_LIST
+        if let Some(a) = PULMONIC_CONSONANT_LIST
             .iter()
             .find(|(consonant, _)| self == consonant)
             .map(|(_, chars)| chars.iter().collect::<String>())
@@ -1465,7 +1700,7 @@ impl std::fmt::Display for PulmonicConsonant {
 impl TryFrom<&str> for PulmonicConsonant {
     type Error = ();
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        for (i, j) in CONSONANT_LIST.iter() {
+        for (i, j) in PULMONIC_CONSONANT_LIST.iter() {
             if j.iter().all(|x| value.contains(*x)) {
                 return Ok(i.clone());
             }
