@@ -1,4 +1,6 @@
-use rhymalize::ipa_utils::fetching::*;
+use std::path::Path;
+
+use rhymalize::ipa_utils::fetching::{json::JsonLookupConverter, wiktionary::*, *};
 fn main() {
     // what to search
     let word = "example";

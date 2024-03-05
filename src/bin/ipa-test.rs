@@ -1,7 +1,9 @@
 use rhymalize::ipa_utils::{
     self,
+    fetching::{json::JsonLookupConverter, IpaConverter},
     ipa::{self, *},
 };
+use std::path::Path;
 
 fn main() {
     // let ipa_stings = ["\u{0065}\u{031E}", "\u{0061}\u{0308}", "\u{0251}"];
@@ -35,5 +37,13 @@ fn main() {
     //println!("{b:?}");
     for i in b {
         println!("{}", i);
+    }
+
+    let converter = JsonLookupConverter::new(Path::new("./en_US.json")).unwrap();
+
+    let output = converter.convert(vec!["can't", "abkhazian"]);
+
+    for i in output {
+        println!("{i:?}");
     }
 }
