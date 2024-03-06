@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::{fs, vec};
 
 use iced::widget::{column, row, Button, Column, Container, Row, Text};
@@ -5,6 +6,8 @@ use iced::Color;
 use iced::{Background, Settings};
 use iced::{Renderer, Sandbox, Theme};
 
+use rhymalize::ipa_utils::fetching::json::JsonLookupConverter;
+use rhymalize::ipa_utils::fetching::IpaConverter;
 use rhymalize::ipa_utils::{self, ipa::*};
 use serde_json::to_string;
 
@@ -26,57 +29,44 @@ impl Sandbox for App {
 
     fn new() -> Self {
         let a = "\u{006C}\u{02E0}";
+        let converter = JsonLookupConverter::new(Path::new("./en_US.json")).unwrap();
         App {
             //text: fs::read_to_string("./text.txt")
             //   .unwrap()
-            text: [
-                vec![
-                    ("Time", vec!["/ˈtaɪm/"]),
-                    ("to", vec!["/ˈtu/", "/tə/", "/tɪ/"]),
-                    ("get", vec!["/ˈɡɛt/", "/ˈɡɪt/"]),
-                    ("creative", vec!["/kɹiˈeɪtɪv/"]),
-                    ("y'all", vec!["/ˌjɔɫ/"]),
-                    ("know", vec!["/ˈnoʊ/"]),
-                    ("coffee", vec!["/ˈkɑfi/", "/ˈkɔfi/"]),
-                    ("is", vec!["/ˈɪz/", "/ɪz/"]),
-                    ("the", vec!["/ˈðə/", "/ðə/", "/ði/"]),
-                    ("drug", vec!["/ˈdɹəɡ/"]),
-                    ("of", vec!["/ˈəv/"]),
-                    ("choice", vec!["/ˈtʃɔɪs/"]),
-                ],
-                vec![
-                    ("Knockin'", vec!["/ˈnɑkɪŋ/"]),
-                    ("all", vec!["/ˈɔɫ/"]),
-                    ("them", vec!["/ˈðɛm/", "/ðəm/"]),
-                    ("sloppy", vec!["/ˈsɫɑpi/"]),
-                    ("demons", vec!["/ˈdimənz/"]),
-                    ("off", vec!["/ˈɔf/"]),
-                    ("me", vec!["/ˈmi/"]),
-                    ("just", vec!["/ˈdʒəst/", "/dʒɪst/"]),
-                    ("to", vec!["/ˈtu/", "/tə/", "/tɪ/"]),
-                    ("hush", vec!["/ˈhəʃ/"]),
-                    ("the", vec!["/ˈðə/", "/ðə/", "/ði/"]),
-                    ("noise", vec!["/ˈnɔɪz/"]),
-                ],
-            ]
-            .iter()
-            .map(|line| {
-                line.iter()
-                    .map(|(word, ipas)| DisplayWord {
-                        text: word.to_string(),
-                        syllables: Some(
-                            syls_from_word(
-                                &Word::try_from(ipas[0]).unwrap_or(Word::default()), // use first possible pronunciation
-                                &ipa_utils::ipa::english::EnglishSyllableRule,
-                            )
-                            .iter()
-                            .map(|z| (z.to_owned(), Some(Color::from_rgb(1.0, 0.0, 0.0))))
-                            .collect(),
-                        ),
-                    })
-                    .collect()
-            })
-            .collect(),
+            text: fs::read_to_string("./text.txt")
+                .unwrap()
+                .split("\n")
+                .map(|line| {
+                    line.split(" ")
+                        .map(|word| {
+                            let word2 = word
+                                .to_ascii_lowercase()
+                                .trim()
+                                .replace(",", "")
+                                .replace(".", "");
+                            let ipas2 = converter.get_ipa_single(&word2);
+                            DisplayWord {
+                                text: word.to_string(),
+                                syllables: if let Ok(ipas) = ipas2 {
+                                    Some(
+                                        syls_from_word(
+                                            &ipas[0], // use first possible pronunciation
+                                            &ipa_utils::ipa::english::EnglishSyllableRule,
+                                        )
+                                        .iter()
+                                        .map(|z| {
+                                            (z.to_owned(), Some(Color::from_rgb(1.0, 0.0, 0.0)))
+                                        })
+                                        .collect(),
+                                    )
+                                } else {
+                                    None
+                                },
+                            }
+                        })
+                        .collect()
+                })
+                .collect(),
         }
     }
 
@@ -110,15 +100,18 @@ impl Sandbox for App {
                         //     let stext: Text<Theme, Renderer> = Text::new(syl.to_string());
                         //     srow = srow.push(stext);
                         // }
-                        let sylls = words.syllables.as_ref().unwrap().iter().fold(
-                            row!().spacing(5),
-                            |srow, (syl, col)| {
-                                srow.push(
-                                    Text::new(syl.to_string().clone())
-                                        .style(col.unwrap_or_default()),
-                                )
-                            },
-                        );
+                        let sylls = if let Some(syllables) = words.syllables.as_ref() {
+                            syllables
+                                .iter()
+                                .fold(row!().spacing(5), |srow, (syl, col)| {
+                                    srow.push(
+                                        Text::new(syl.to_string().clone())
+                                            .style(col.unwrap_or_default()),
+                                    )
+                                })
+                        } else {
+                            row!()
+                        };
                         row.push(column!(text, sylls).align_items(iced::Alignment::Center))
                     })
                     .spacing(5)
