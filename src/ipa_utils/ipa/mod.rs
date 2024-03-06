@@ -1229,7 +1229,11 @@ const VOWEL_LIST: [(Vowel, &[char]); 33] = [
     ),
 ];
 
-const SPECIAL_LIST: [(char, &str); 1] = [('ɫ', "l\u{02E0}")];
+const REPLACE_LIST: [(char, &str); 3] = [
+    ('ɫ', "l\u{02E0}"),
+    ('ɚ', "\u{0259}\u{02DE}"),
+    ('ɝ', "\u{025C}\u{02DE}"),
+];
 
 pub trait SyllableRule {
     fn is_allowed_neighbour(&self, first: &Letter, second: &Letter) -> bool;
@@ -1422,7 +1426,7 @@ pub struct Letter {
 impl TryFrom<&str> for Letter {
     type Error = anyhow::Error;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        for (special, replace) in SPECIAL_LIST {
+        for (special, replace) in REPLACE_LIST {
             if value.contains(special) {
                 return Self::try_from(replace);
             }
