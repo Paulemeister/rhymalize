@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+use anyhow::anyhow;
 use core::fmt;
 use phf::{phf_map, Map};
 use std::vec;
@@ -1389,7 +1390,7 @@ pub struct Word(Vec<Letter>);
 
 impl TryFrom<&str> for Word {
     // assumes diacritics are always behind their corresponding letters
-    type Error = ();
+    type Error = anyhow::Error;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         let mut out = vec![];
 
@@ -1419,7 +1420,7 @@ pub struct Letter {
 }
 
 impl TryFrom<&str> for Letter {
-    type Error = ();
+    type Error = anyhow::Error;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         for (special, replace) in SPECIAL_LIST {
             if value.contains(special) {
@@ -1460,7 +1461,7 @@ pub enum LetterType {
 }
 
 impl TryFrom<&str> for LetterType {
-    type Error = ();
+    type Error = anyhow::Error;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         if let Ok(vow) = Vowel::try_from(value) {
             return Ok(Self::Vowel(vow));
@@ -1471,7 +1472,7 @@ impl TryFrom<&str> for LetterType {
         if let Ok(cons) = PulmonicConsonant::try_from(value) {
             return Ok(Self::PulmonicConsonant(cons));
         }
-        Err(())
+        Err(anyhow!("can't construct LetterType from {}", value))
     }
 }
 

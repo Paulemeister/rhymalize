@@ -14,6 +14,5 @@ pub trait IpaConverter {
             .iter()
             .map(|&x| Word::try_from(x))
             .collect::<Result<Vec<Word>, _>>()
-            .map_err(|x| anyhow!("test"))
     }
 }

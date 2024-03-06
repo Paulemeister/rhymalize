@@ -45,6 +45,9 @@ impl Sandbox for App {
                                 .replace(",", "")
                                 .replace(".", "");
                             let ipas2 = converter.get_ipa_single(&word2);
+                            if ipas2.is_err() {
+                                println!("{ipas2:?}")
+                            }
                             DisplayWord {
                                 text: word.to_string(),
                                 syllables: if let Ok(ipas) = ipas2 {

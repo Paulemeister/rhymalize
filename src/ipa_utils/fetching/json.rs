@@ -27,9 +27,9 @@ impl IpaConverter for JsonLookupConverter {
         Ok(self
             .lookup_content
             .get(input)
-            .context("couldn't find string in lookup json")?
+            .context(format!("couldn't find \"{}\" in lookup json", input))?
             .as_str()
-            .context("json value wasn't as string")?
+            .context(format!("json value for \"{}\" wasn't as string", input))?
             .split(", ")
             .collect())
     }
