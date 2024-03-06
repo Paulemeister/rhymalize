@@ -1229,6 +1229,15 @@ const VOWEL_LIST: [(Vowel, &[char]); 33] = [
     ),
 ];
 
+const MISC_LETTER_LIST: [(MiscLetter, &[char]); 6] = [
+    (MiscLetter::VoicedLabialPalatalApproximant, &['w']),
+    (MiscLetter::VoicelessLabialPalatalApproximant, &['\u{028D}']),
+    (MiscLetter::VoicelessLabialVelarApproximant, &['\u{0265}']),
+    (MiscLetter::VoicedLabialVelarApproximant, &['\u{0265}']),
+    (MiscLetter::SjSound, &['ɧ']),
+    (MiscLetter::VelarizedAveolar, &['\u{006C}', '\u{02E0}']),
+];
+
 const REPLACE_LIST: [(char, &str); 3] = [
     ('ɫ', "l\u{02E0}"),
     ('ɚ', "\u{0259}\u{02DE}"),
@@ -1462,6 +1471,7 @@ pub enum LetterType {
     NonPulmonicConsonant,
     Vowel(Vowel),
     Suprasegmental(Suprasegmental),
+    MiscLetter(MiscLetter),
 }
 
 impl TryFrom<&str> for LetterType {
@@ -1476,6 +1486,9 @@ impl TryFrom<&str> for LetterType {
         if let Ok(cons) = PulmonicConsonant::try_from(value) {
             return Ok(Self::PulmonicConsonant(cons));
         }
+        if let Ok(misc) = MiscLetter::try_from(value) {
+            return Ok(Self::MiscLetter(misc));
+        }
         Err(anyhow!("can't construct LetterType from {}", value))
     }
 }
@@ -1489,9 +1502,46 @@ impl fmt::Display for LetterType {
                 LetterType::Suprasegmental(s) => s.to_string(),
                 LetterType::PulmonicConsonant(p) => p.to_string(),
                 LetterType::Vowel(v) => v.to_string(),
+                LetterType::MiscLetter(m) => m.to_string(),
                 _ => return Err(fmt::Error),
             }
         )
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum MiscLetter {
+    VoicedLabialPalatalApproximant,
+    VoicelessLabialPalatalApproximant,
+    VoicedLabialVelarApproximant,
+    VoicelessLabialVelarApproximant,
+    SjSound,
+    VelarizedAveolar,
+    VoicedAlveolarLateralApproximant,
+}
+
+impl std::fmt::Display for MiscLetter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(a) = MISC_LETTER_LIST
+            .iter()
+            .find(|(consonant, _)| self == consonant)
+            .map(|(_, chars)| chars.iter().collect::<String>())
+        {
+            write!(f, "{}", a)
+        } else {
+            Err(fmt::Error)
+        }
+    }
+}
+impl TryFrom<&str> for MiscLetter {
+    type Error = ();
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        for (i, j) in MISC_LETTER_LIST.iter() {
+            if j.iter().all(|x| value.contains(*x)) {
+                return Ok(i.clone());
+            }
+        }
+        Err(())
     }
 }
 
