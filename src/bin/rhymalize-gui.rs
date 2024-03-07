@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::{fs, vec};
 
-use iced::widget::{column, row, Button, Column, Container, Row, Text};
+use iced::widget::{column, row, scrollable::Scrollable, Button, Column, Container, Row, Text};
 use iced::Color;
 use iced::{Background, Settings};
 use iced::{Renderer, Sandbox, Theme};
@@ -121,9 +121,7 @@ impl Sandbox for App {
             })
             .fold(column!(), |col, row| col.push(row));
 
-        Container::new(words)
-            .center_x()
-            .center_y()
+        Scrollable::new(Container::new(words).width(iced::Length::Fill).center_x())
             .width(iced::Length::Fill)
             .height(iced::Length::Fill)
             .into()
