@@ -1,5 +1,5 @@
-use std::borrow::BorrowMut;
 use std::path::Path;
+use std::rc::Rc;
 use std::{fs, vec};
 
 use iced::widget::{column, row, scrollable::Scrollable, Button, Column, Container, Row, Text};
@@ -14,35 +14,31 @@ use rhymalize::ipa_utils::{self, ipa::*};
 use serde_json::to_string;
 use std::cell::RefCell;
 
-#[derive(Clone)]
 struct Rhyme {
     color: Color,
 }
 
-#[derive(Clone)]
 struct DisplayWord {
     text: String,
-    syllables: Option<Vec<RefCell<DisplaySyllable>>>,
+    syllables: Option<Vec<Rc<RefCell<DisplaySyllable>>>>,
 }
 
-#[derive(Clone)]
 struct DisplaySyllable {
     syllable: Syllable,
     rhymes: Vec<RhymeSyllable>,
 }
 
-#[derive(Clone)]
 struct RhymeSyllable {
-    rhyme: RefCell<Rhyme>,
-    prev: Option<RefCell<DisplaySyllable>>,
+    rhyme: Rc<RefCell<Rhyme>>,
+    prev: Option<Rc<RefCell<DisplaySyllable>>>,
     prev_dist: Option<usize>,
-    next: Option<RefCell<DisplaySyllable>>,
+    next: Option<Rc<RefCell<DisplaySyllable>>>,
     next_dist: Option<usize>,
 }
 struct App {
     raw_text: String,
     text: Vec<Vec<DisplayWord>>,
-    rhymes: Vec<RefCell<Rhyme>>,
+    rhymes: Vec<Rc<RefCell<Rhyme>>>,
 }
 
 impl App {
@@ -52,7 +48,7 @@ impl App {
                 if let Some(syls) = &word.syllables {
                     for syl in syls {
                         syl.borrow_mut().rhymes = vec![RhymeSyllable {
-                            rhyme: self.rhymes[0].clone(),
+                            rhyme: Rc::clone(&self.rhymes[0]),
                             prev: None,
                             prev_dist: None,
                             next: None,
@@ -83,9 +79,9 @@ impl Application for App {
             App {
                 //text: fs::read_to_string("./text.txt")
                 //   .unwrap()
-                rhymes: vec![RefCell::new(Rhyme {
+                rhymes: vec![Rc::new(RefCell::new(Rhyme {
                     color: Color::from_rgb8(255, 0, 0),
-                })],
+                }))],
                 raw_text: text.clone(),
                 text: text
                     .split("\n")
@@ -111,10 +107,10 @@ impl Application for App {
                                             )
                                             .iter()
                                             .map(|z| {
-                                                RefCell::new(DisplaySyllable {
+                                                Rc::new(RefCell::new(DisplaySyllable {
                                                     syllable: z.to_owned(),
                                                     rhymes: vec![],
-                                                }) //Some(Color::from_rgb(1.0, 0.0, 0.0)))
+                                                })) //Some(Color::from_rgb(1.0, 0.0, 0.0)))
                                             })
                                             .collect(),
                                         )
