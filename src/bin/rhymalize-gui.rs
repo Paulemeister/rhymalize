@@ -16,6 +16,7 @@ use std::cell::RefCell;
 
 struct Rhyme {
     color: Color,
+    members: Vec<Rc<RefCell<DisplaySyllable>>>,
 }
 
 struct DisplayWord {
@@ -43,19 +44,54 @@ struct App {
 
 impl App {
     fn calc_rhyme(&mut self) {
-        for line in &self.text {
-            for word in line {
-                if let Some(syls) = &word.syllables {
-                    for syl in syls {
-                        syl.borrow_mut().rhymes = vec![RhymeSyllable {
-                            rhyme: Rc::clone(&self.rhymes[0]),
-                            prev: None,
-                            prev_dist: None,
-                            next: None,
-                            next_dist: None,
-                        }];
-                    }
+        self.rhymes = vec![];
+
+        let syls: Vec<&Rc<RefCell<DisplaySyllable>>> = self
+            .text
+            .iter()
+            .flat_map(|x| x.iter().flat_map(|y| y.syllables.iter()))
+            .flatten()
+            .collect();
+
+        for syl in syls.iter() {
+            syl.borrow_mut().rhymes = vec![];
+        }
+
+        let colors = [
+            Color::from_rgb8(0, 0, 255),
+            Color::from_rgb8(0, 255, 0),
+            Color::from_rgb8(0, 255, 255),
+            Color::from_rgb8(255, 0, 0),
+            Color::from_rgb8(255, 0, 255),
+            Color::from_rgb8(255, 255, 0),
+        ];
+        let mut col_index = 0;
+
+        for (i, syl) in syls.iter().enumerate() {
+            if !syl.borrow().rhymes.is_empty() {
+                // if syllable has rhyme, continue
+                continue;
+            }
+            let new_rhyme = Rc::new(RefCell::new(Rhyme {
+                color: colors[col_index],
+                members: vec![Rc::clone(syl)],
+            }));
+            self.rhymes.push(Rc::clone(&new_rhyme));
+            for other_syl in syls.iter().skip(i) {
+                //println!("{}, {}", syl.borrow().syllable, other_syl.borrow().syllable);
+                if other_syl.borrow().syllable.nucleus == syl.borrow().syllable.nucleus {
+                    other_syl.borrow_mut().rhymes.push(RhymeSyllable {
+                        rhyme: Rc::clone(&new_rhyme),
+                        prev: None,
+                        prev_dist: None,
+                        next: None,
+                        next_dist: None,
+                    });
                 }
+            }
+            col_index += 1;
+            if col_index == colors.len() {
+                col_index = 0
             }
         }
     }
@@ -81,6 +117,7 @@ impl Application for App {
                 //   .unwrap()
                 rhymes: vec![Rc::new(RefCell::new(Rhyme {
                     color: Color::from_rgb8(255, 0, 0),
+                    members: vec![],
                 }))],
                 raw_text: text.clone(),
                 text: text
