@@ -1,3 +1,4 @@
+use std::borrow::BorrowMut;
 use std::path::Path;
 use std::{fs, vec};
 
@@ -11,7 +12,9 @@ use rhymalize::ipa_utils::fetching::json::JsonLookupConverter;
 use rhymalize::ipa_utils::fetching::IpaConverter;
 use rhymalize::ipa_utils::{self, ipa::*};
 use serde_json::to_string;
+use std::cell::RefCell;
 
+#[derive(Clone)]
 struct Rhyme {
     color: Color,
 }
@@ -19,19 +22,42 @@ struct Rhyme {
 #[derive(Clone)]
 struct DisplayWord {
     text: String,
-    syllables: Option<Vec<(Syllable, Option<Color>)>>,
+    syllables: Option<Vec<RefCell<DisplaySyllable>>>,
+}
+
+#[derive(Clone)]
+struct DisplaySyllable {
+    syllable: Syllable,
+    rhymes: Vec<RhymeSyllable>,
+}
+
+#[derive(Clone)]
+struct RhymeSyllable {
+    rhyme: RefCell<Rhyme>,
+    prev: Option<RefCell<DisplaySyllable>>,
+    prev_dist: Option<usize>,
+    next: Option<RefCell<DisplaySyllable>>,
+    next_dist: Option<usize>,
 }
 struct App {
+    raw_text: String,
     text: Vec<Vec<DisplayWord>>,
+    rhymes: Vec<RefCell<Rhyme>>,
 }
 
 impl App {
     fn calc_rhyme(&mut self) {
-        for a in &mut self.text {
-            for b in a {
-                for c in &mut b.syllables {
-                    for (_, col) in c {
-                        *col = Some(Color::from_rgb(1.0, 0.0, 0.0));
+        for line in &self.text {
+            for word in line {
+                if let Some(syls) = &word.syllables {
+                    for syl in syls {
+                        syl.borrow_mut().rhymes = vec![RhymeSyllable {
+                            rhyme: self.rhymes[0].clone(),
+                            prev: None,
+                            prev_dist: None,
+                            next: None,
+                            next_dist: None,
+                        }];
                     }
                 }
             }
@@ -52,12 +78,16 @@ impl Application for App {
 
     fn new(flags: Self::Flags) -> (Self, Command<Message>) {
         let converter = JsonLookupConverter::new(Path::new("./en_US.json")).unwrap();
+        let text = fs::read_to_string("./text.txt").unwrap();
         (
             App {
                 //text: fs::read_to_string("./text.txt")
                 //   .unwrap()
-                text: fs::read_to_string("./text.txt")
-                    .unwrap()
+                rhymes: vec![RefCell::new(Rhyme {
+                    color: Color::from_rgb8(255, 0, 0),
+                })],
+                raw_text: text.clone(),
+                text: text
                     .split("\n")
                     .map(|line| {
                         line.split(" ")
@@ -81,7 +111,10 @@ impl Application for App {
                                             )
                                             .iter()
                                             .map(|z| {
-                                                (z.to_owned(), None) //Some(Color::from_rgb(1.0, 0.0, 0.0)))
+                                                RefCell::new(DisplaySyllable {
+                                                    syllable: z.to_owned(),
+                                                    rhymes: vec![],
+                                                }) //Some(Color::from_rgb(1.0, 0.0, 0.0)))
                                             })
                                             .collect(),
                                         )
@@ -132,13 +165,17 @@ impl Application for App {
                         //     srow = srow.push(stext);
                         // }
                         let sylls = if let Some(syllables) = words.syllables.as_ref() {
-                            syllables
-                                .iter()
-                                .fold(row!().spacing(5), |srow, (syl, col)| {
-                                    srow.push(Text::new(syl.to_string().clone()).style(
-                                        col.unwrap_or_else(|| Color::from_rgb(0.9, 0.9, 0.9)),
-                                    ))
-                                })
+                            syllables.iter().fold(row!().spacing(5), |srow, syl| {
+                                srow.push(
+                                    Text::new(syl.borrow().syllable.to_string().clone()).style({
+                                        if let Some(rhyme_syl) = syl.borrow().rhymes.get(0) {
+                                            rhyme_syl.rhyme.borrow().color
+                                        } else {
+                                            Color::from_rgb(0.9, 0.9, 0.9)
+                                        }
+                                    }),
+                                )
+                            })
                         } else {
                             row!()
                         };
