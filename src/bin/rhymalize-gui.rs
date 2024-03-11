@@ -2,15 +2,14 @@ use std::path::Path;
 use std::rc::Rc;
 use std::{fs, vec};
 
-use iced::futures::future::OrElse;
 use iced::widget::{column, row, scrollable::Scrollable, Button, Column, Container, Row, Text};
 use iced::{executor, Application, Color};
 use iced::{Background, Settings};
 use iced::{Renderer, Sandbox, Theme};
 
 use iced::command::Command;
-use rhymalize::ipa_utils::fetching::json::JsonLookupConverter;
 use rhymalize::ipa_utils::fetching::IpaConverter;
+use rhymalize::ipa_utils::fetching::{json::JsonLookupConverter, wiktionary::WiktionaryConverter};
 use rhymalize::ipa_utils::{self, ipa::*};
 use serde_json::to_string;
 use std::cell::RefCell;
@@ -147,6 +146,7 @@ impl Application for App {
 
     fn new(flags: Self::Flags) -> (Self, Command<Message>) {
         let converter = JsonLookupConverter::new(Path::new("./en_US.json")).unwrap();
+        //let converter = WiktionaryConverter {};
         let text = fs::read_to_string("./text.txt").unwrap();
         (
             App {

@@ -23,7 +23,7 @@ fn a() {
 }
 
 impl IpaConverter for JsonLookupConverter {
-    fn convert_single(&self, input: &str) -> Result<Vec<&str>, Error> {
+    fn convert_single(&self, input: &str) -> Result<Vec<String>, Error> {
         Ok(self
             .lookup_content
             .get(input)
@@ -31,10 +31,11 @@ impl IpaConverter for JsonLookupConverter {
             .as_str()
             .context(format!("json value for \"{}\" wasn't as string", input))?
             .split(", ")
+            .map(|x| x.to_string())
             .collect())
     }
 
-    fn convert(&self, inputs: Vec<&str>) -> Vec<Result<Vec<&str>, Error>> {
+    fn convert(&self, inputs: Vec<&str>) -> Vec<Result<Vec<String>, Error>> {
         inputs
             .iter()
             .map(|input| Self::convert_single(self, input))

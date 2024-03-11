@@ -1,7 +1,18 @@
-use anyhow::{ensure, Context, Error};
+use std::num::NonZeroI128;
+
+use super::IpaConverter;
+use anyhow::{anyhow, ensure, Context, Error};
 use serde_json::{from_str, Value};
 
 static API_URL: &str = "https://en.wiktionary.org/w/api.php";
+
+pub struct WiktionaryConverter;
+
+impl IpaConverter for WiktionaryConverter {
+    fn convert_single(&self, input: &str) -> Result<Vec<String>, anyhow::Error> {
+        get_single(input)
+    }
+}
 
 pub fn get_single(word: &str) -> Result<Vec<String>, Error> {
     // id of first hit
@@ -20,7 +31,8 @@ pub fn get_single(word: &str) -> Result<Vec<String>, Error> {
         .context("failed to read section as str")?;
 
     // filter out only the ipa pronunciations
-    Ok(pron_sec
+    let prons = pron_sec
+        .to_string()
         .split('\n')
         .filter(|&x| x.to_owned().starts_with("* {{a|")) // filter wanted lines
         .map(|x| {
@@ -36,7 +48,12 @@ pub fn get_single(word: &str) -> Result<Vec<String>, Error> {
                 .filter(|&x| !x.is_empty()) // filter out the last two '{'
                 .map(|x| x.to_string())
         })
-        .collect::<Vec<String>>())
+        .collect::<Vec<String>>();
+    if prons.is_empty() {
+        Err(anyhow!("didn't find ipa section"))
+    } else {
+        Ok(prons)
+    }
 }
 
 fn get_sec_by_id(page_id: i64, sec_id: i64) -> Result<String, Error> {
