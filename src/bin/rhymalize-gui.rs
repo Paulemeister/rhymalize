@@ -134,8 +134,8 @@ impl App {
     }
 
     fn get_syllables(&mut self) -> Command<Message> {
-        //let converter = JsonLookupConverter::new(Path::new("./en_US.json")).unwrap();
-        let converter = WiktionaryConverter {};
+        let converter = JsonLookupConverter::new(Path::new("./en_US.json")).unwrap();
+        //let converter = WiktionaryConverter {};
 
         for word in self.text.iter_mut().flat_map(|x| x.iter_mut()) {
             let word2 = word
