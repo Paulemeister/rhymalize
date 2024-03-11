@@ -44,7 +44,7 @@ struct App {
 }
 
 impl App {
-    fn calc_rhyme(&mut self) {
+    fn calc_rhyme(&mut self) -> Command<Message> {
         self.rhymes = vec![];
 
         let syls: Vec<&Rc<RefCell<DisplaySyllable>>> = self
@@ -130,12 +130,51 @@ impl App {
                 self.rhymes.push(Rc::clone(&new_rhyme));
             }
         }
+        Command::none()
+    }
+
+    fn get_syllables(&mut self) -> Command<Message> {
+        //let converter = JsonLookupConverter::new(Path::new("./en_US.json")).unwrap();
+        let converter = WiktionaryConverter {};
+
+        for word in self.text.iter_mut().flat_map(|x| x.iter_mut()) {
+            let word2 = word
+                .text
+                .to_ascii_lowercase()
+                .trim()
+                .replace(",", "")
+                .replace(".", "");
+            let ipas2 = converter.get_ipa_single(&word2);
+            if ipas2.is_err() {
+                println!("{ipas2:?}")
+            }
+            word.syllables = if let Ok(ipas) = ipas2 {
+                Some(
+                    syls_from_word(
+                        &ipas[0], // use first possible pronunciation
+                        &ipa_utils::ipa::english::EnglishSyllableRule,
+                    )
+                    .iter()
+                    .map(|z| {
+                        Rc::new(RefCell::new(DisplaySyllable {
+                            syllable: z.to_owned(),
+                            rhymes: vec![],
+                        })) //Some(Color::from_rgb(1.0, 0.0, 0.0)))
+                    })
+                    .collect(),
+                )
+            } else {
+                None
+            }
+        }
+        Command::perform(async {}, |_| Message::CalculateRhyme)
     }
 }
 
 #[derive(Debug)]
 enum Message {
     CalculateRhyme,
+    GetSyllables,
 }
 
 impl Application for App {
@@ -145,59 +184,26 @@ impl Application for App {
     type Theme = Theme;
 
     fn new(flags: Self::Flags) -> (Self, Command<Message>) {
-        let converter = JsonLookupConverter::new(Path::new("./en_US.json")).unwrap();
-        //let converter = WiktionaryConverter {};
         let text = fs::read_to_string("./text.txt").unwrap();
         (
             App {
                 //text: fs::read_to_string("./text.txt")
                 //   .unwrap()
-                rhymes: vec![Rc::new(RefCell::new(Rhyme {
-                    color: Color::from_rgb8(255, 0, 0),
-                    members: vec![],
-                }))],
+                rhymes: vec![],
                 raw_text: text.clone(),
                 text: text
                     .split("\n")
                     .map(|line| {
                         line.split(" ")
-                            .map(|word| {
-                                let word2 = word
-                                    .to_ascii_lowercase()
-                                    .trim()
-                                    .replace(",", "")
-                                    .replace(".", "");
-                                let ipas2 = converter.get_ipa_single(&word2);
-                                if ipas2.is_err() {
-                                    println!("{ipas2:?}")
-                                }
-                                DisplayWord {
-                                    text: word.to_string(),
-                                    syllables: if let Ok(ipas) = ipas2 {
-                                        Some(
-                                            syls_from_word(
-                                                &ipas[0], // use first possible pronunciation
-                                                &ipa_utils::ipa::english::EnglishSyllableRule,
-                                            )
-                                            .iter()
-                                            .map(|z| {
-                                                Rc::new(RefCell::new(DisplaySyllable {
-                                                    syllable: z.to_owned(),
-                                                    rhymes: vec![],
-                                                })) //Some(Color::from_rgb(1.0, 0.0, 0.0)))
-                                            })
-                                            .collect(),
-                                        )
-                                    } else {
-                                        None
-                                    },
-                                }
+                            .map(|word| DisplayWord {
+                                text: word.to_string(),
+                                syllables: None,
                             })
                             .collect()
                     })
                     .collect(),
             },
-            Command::perform(async {}, |_| Message::CalculateRhyme),
+            Command::perform(async {}, |_| Message::GetSyllables),
         )
     }
 
@@ -208,8 +214,8 @@ impl Application for App {
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         match message {
             Message::CalculateRhyme => self.calc_rhyme(),
+            Message::GetSyllables => self.get_syllables(),
         }
-        Command::none()
     }
 
     // if let Some(syls) = x.syllables {
