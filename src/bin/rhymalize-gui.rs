@@ -2,6 +2,7 @@ use std::path::Path;
 use std::rc::Rc;
 use std::{fs, vec};
 
+use iced::futures::future::OrElse;
 use iced::widget::{column, row, scrollable::Scrollable, Button, Column, Container, Row, Text};
 use iced::{executor, Application, Color};
 use iced::{Background, Settings};
@@ -30,6 +31,7 @@ struct DisplaySyllable {
 }
 
 struct RhymeSyllable {
+    cur: Rc<RefCell<DisplaySyllable>>,
     rhyme: Rc<RefCell<Rhyme>>,
     prev: Option<Rc<RefCell<DisplaySyllable>>>,
     prev_dist: Option<usize>,
@@ -74,24 +76,59 @@ impl App {
             }
             let new_rhyme = Rc::new(RefCell::new(Rhyme {
                 color: colors[col_index],
-                members: vec![Rc::clone(syl)],
+                members: vec![],
             }));
-            self.rhymes.push(Rc::clone(&new_rhyme));
-            for other_syl in syls.iter().skip(i) {
+            let mut added_root_rhyme = false;
+            let mut last_rhyme_syl = i;
+            for (j, other_syl) in syls.iter().enumerate().skip(i + 1) {
                 //println!("{}, {}", syl.borrow().syllable, other_syl.borrow().syllable);
                 if other_syl.borrow().syllable.nucleus == syl.borrow().syllable.nucleus {
-                    other_syl.borrow_mut().rhymes.push(RhymeSyllable {
+                    //
+                    if !added_root_rhyme {
+                        let new_rhyme_syl = RhymeSyllable {
+                            cur: Rc::clone(syl),
+                            rhyme: Rc::clone(&new_rhyme),
+                            prev: None,
+                            prev_dist: None,
+                            next: None,
+                            next_dist: None,
+                        };
+                        new_rhyme
+                            .borrow_mut()
+                            .members
+                            .push(Rc::clone(&new_rhyme_syl.cur));
+                        syl.borrow_mut().rhymes.push(new_rhyme_syl);
+                        added_root_rhyme = true;
+                    }
+                    let dist = Some(j - last_rhyme_syl);
+                    if let Some(last_syl) = new_rhyme.borrow().members.last() {
+                        if let Some(rhyme_syl) = last_syl.borrow_mut().rhymes.last_mut() {
+                            rhyme_syl.next = Some(Rc::clone(other_syl));
+                            rhyme_syl.next_dist = dist;
+                        }
+                    }
+                    let new_rhyme_syl = RhymeSyllable {
+                        cur: Rc::clone(&other_syl),
                         rhyme: Rc::clone(&new_rhyme),
-                        prev: None,
-                        prev_dist: None,
+                        prev: new_rhyme.borrow().members.last().map(Rc::clone),
+                        prev_dist: dist,
                         next: None,
                         next_dist: None,
-                    });
+                    };
+                    new_rhyme
+                        .borrow_mut()
+                        .members
+                        .push(Rc::clone(&new_rhyme_syl.cur));
+                    other_syl.borrow_mut().rhymes.push(new_rhyme_syl);
+                    last_rhyme_syl = j;
                 }
             }
             col_index += 1;
             if col_index == colors.len() {
                 col_index = 0
+            }
+            if !new_rhyme.borrow().members.is_empty() {
+                self.rhymes.push(Rc::clone(&new_rhyme));
             }
         }
     }
@@ -201,8 +238,29 @@ impl Application for App {
                             syllables.iter().fold(row!().spacing(5), |srow, syl| {
                                 srow.push(
                                     Text::new(syl.borrow().syllable.to_string().clone()).style({
-                                        if let Some(rhyme_syl) = syl.borrow().rhymes.get(0) {
-                                            rhyme_syl.rhyme.borrow().color
+                                        if let Some(rhyme_syl) = syl.borrow().rhymes.first() {
+                                            // if let Some(a) = rhyme_syl.prev.as_ref() {
+                                            //     print!("{}", a.borrow().syllable)
+                                            // } else {
+                                            //     print!("None")
+                                            // }
+                                            // print!(", {}, ", syl.borrow().syllable);
+                                            // if let Some(a) = rhyme_syl.next.as_ref() {
+                                            //     println!("{}", a.borrow().syllable)
+                                            // } else {
+                                            //     println!("None")
+                                            // }
+
+                                            if [rhyme_syl.next_dist, rhyme_syl.prev_dist]
+                                                .iter()
+                                                .flatten()
+                                                .min()
+                                                .map_or(false, |x| x < &6)
+                                            {
+                                                rhyme_syl.rhyme.borrow().color
+                                            } else {
+                                                Color::from_rgb(0.9, 0.9, 0.9)
+                                            }
                                         } else {
                                             Color::from_rgb(0.9, 0.9, 0.9)
                                         }
