@@ -1407,13 +1407,23 @@ impl TryFrom<&str> for Word {
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         let mut out = vec![];
 
-        for grapheme in UnicodeSegmentation::graphemes(value, true) {
-            if grapheme == "/" {
+        let mut failed = vec![];
+        for grapheme in UnicodeSegmentation::graphemes(value, true).rev() {
+            if ["/", "[", "]"].iter().any(|&z| grapheme == z) {
                 continue;
             }
-            out.push(Letter::try_from(grapheme)?)
+            let mut combined = grapheme.to_string();
+            failed.iter().for_each(|z| combined.push_str(*z));
+
+            if let Ok(letter) = Letter::try_from(combined.as_str()) {
+                out.push(letter);
+                failed = vec![];
+            } else {
+                failed.push(grapheme);
+            }
         }
 
+        out.reverse();
         Ok(Self(out))
     }
 }

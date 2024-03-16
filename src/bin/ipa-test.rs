@@ -28,22 +28,31 @@ fn main() {
 
     // let b = Letter::try_from("ɑ̃").unwrap();
     // println!("{b} {b:?}");
-    let words = ["ɡ̊uːt", "ˈʃtuːdi̯ʊm", "ɔʁt", "ˈkeɪ.ɒs"];
+    // let words = ["ɡ̊uːt", "ˈʃtuːdi̯ʊm", "ɔʁt", "ˈkeɪ.ɒs"];
 
-    let a = Word::try_from(words[1]).unwrap();
-    let opts = ipa_utils::ipa::english::EnglishSyllableRule {};
-    let b = syls_from_word(&a, &opts);
+    // let a = Word::try_from(words[1]).unwrap();
+    // let opts = ipa_utils::ipa::english::EnglishSyllableRule {};
+    // let b = syls_from_word(&a, &opts);
     //println!("{a:?}");
     //println!("{b:?}");
-    for i in b {
-        println!("{}", i);
-    }
+    // for i in b {
+    //     println!("{}", i);
+    // }
 
-    let converter = JsonLookupConverter::new(Path::new("./en_US.json")).unwrap();
-
+    //let converter = JsonLookupConverter::new(Path::new("./en_US.json")).unwrap();
+    let converter = rhymalize::ipa_utils::fetching::wiktionary::WiktionaryConverter {};
     let output = converter.convert(vec!["can't", "abkhazian"]);
 
     for i in output {
-        println!("{i:?}");
+        if let Ok(k) = i {
+            for j in k {
+                match Word::try_from(j.as_str()) {
+                    Ok(t) => println!("{t}"),
+                    Err(e) => println!("{j}: {e}"),
+                }
+            }
+        } else {
+            println!("Err: {}", i.unwrap_err())
+        }
     }
 }

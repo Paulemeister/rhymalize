@@ -160,7 +160,7 @@ impl App {
             "/home/paulemeister/Code/Rust/rhymalize/en_US.json",
         ))
         .unwrap();
-        //let converter = WiktionaryConverter {};
+        let converter = WiktionaryConverter {};
 
         for word in self.text.iter_mut().flat_map(|x| x.iter_mut()) {
             let word2 = word

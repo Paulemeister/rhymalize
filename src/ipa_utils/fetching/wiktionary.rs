@@ -18,7 +18,7 @@ pub fn get_single(word: &str) -> Result<Vec<String>, Error> {
     // id of first hit
     let first_hit_id = get_id(word)?;
 
-    let pron_sec_id = get_pron_sec_id(word)?;
+    let pron_sec_id = get_pron_sec_id(first_hit_id)?;
     // get the content of the "pronunciation" section (id=3 ?) of the current revision
     let search_url = format!("{}?format=json&action=query&pageids={}&prop=revisions&rvslots=main&rvprop=content&rvsection={}",API_URL,first_hit_id,pron_sec_id);
 
@@ -31,24 +31,18 @@ pub fn get_single(word: &str) -> Result<Vec<String>, Error> {
         .context("failed to read section as str")?;
 
     // filter out only the ipa pronunciations
-    let prons = pron_sec
+
+    let prons: Vec<String> = pron_sec
         .to_string()
-        .split('\n')
-        .filter(|&x| x.to_owned().starts_with("* {{a|")) // filter wanted lines
-        .map(|x| {
-            x.split("{{")
-                .last() // get second parethesis
-                .context(format!("{} doesnt have a last element after splitting", x))
-        })
-        .collect::<Result<Vec<_>, Error>>()?
+        .split("{{")
+        .filter(|x| x.starts_with("IPA|en|"))
+        .map(|z| z.strip_prefix("IPA|en|").unwrap().split_once("}}"))
+        .collect::<Option<Vec<_>>>()
+        .with_context(|| "didn't find")?
         .iter()
-        .flat_map(|&x| {
-            x.split(['|', '}'])
-                .skip(2)
-                .filter(|&x| !x.is_empty()) // filter out the last two '{'
-                .map(|x| x.to_string())
-        })
-        .collect::<Vec<String>>();
+        .flat_map(|(a, _)| a.split("|"))
+        .map(|x| x.to_string())
+        .collect();
     if prons.is_empty() {
         Err(anyhow!("didn't find ipa section"))
     } else {
@@ -83,10 +77,10 @@ fn get_id(word: &str) -> Result<i64, Error> {
         .context("converting or reading ID from search failed")
 }
 
-fn get_pron_sec_id(word: &str) -> Result<i64, Error> {
+fn get_pron_sec_id(id: i64) -> Result<i64, Error> {
     let search_url = format!(
-        "{}?format=json&action=parse&prop=sections&page={}",
-        API_URL, word
+        "{}?format=json&action=parse&prop=sections&pageid={}",
+        API_URL, id
     );
     let res = from_str::<Value>(reqwest::blocking::get(&search_url)?.text()?.as_str())?;
     let sections0 = res
@@ -129,7 +123,7 @@ pub fn get_multiple(words: Vec<&str>) -> Result<Vec<Vec<String>>, Error> {
         .map(|&x| get_id(x))
         .collect::<Result<Vec<i64>, Error>>()?;
 
-    let pron_sec_ids = words
+    let pron_sec_ids = ids
         .iter()
         .map(|&x| get_pron_sec_id(x))
         .collect::<Result<Vec<i64>, Error>>()?;
