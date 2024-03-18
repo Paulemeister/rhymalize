@@ -160,18 +160,25 @@ impl App {
             "/home/paulemeister/Code/Rust/rhymalize/en_US.json",
         ))
         .unwrap();
-        let converter = WiktionaryConverter {};
+        let converter = WiktionaryConverter::new();
 
-        for word in self.text.iter_mut().flat_map(|x| x.iter_mut()) {
-            let word2 = word
-                .read()
-                .unwrap()
-                .text
-                .to_ascii_lowercase()
-                .trim()
-                .replace(",", "")
-                .replace(".", "");
-            let ipas2 = converter.get_ipa_single(&word2);
+        let words: Vec<String> = self
+            .text
+            .iter_mut()
+            .flat_map(|x| x.iter_mut())
+            .map(|z| {
+                z.read()
+                    .unwrap()
+                    .text
+                    .to_ascii_lowercase()
+                    .trim()
+                    .replace(",", "")
+                    .replace(".", "")
+            })
+            .collect();
+        let ipas = converter.get_ipa(words.iter().map(|x| x.as_str()).collect());
+        for (index, word) in self.text.iter_mut().flat_map(|x| x.iter_mut()).enumerate() {
+            let ipas2 = &ipas[index];
             if ipas2.is_err() {
                 println!("{ipas2:?}")
             }

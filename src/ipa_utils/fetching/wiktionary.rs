@@ -1,17 +1,30 @@
-use std::num::NonZeroI128;
-
 use super::IpaConverter;
 use anyhow::{anyhow, ensure, Context, Error};
-use serde_json::{from_str, Value};
+use serde_json::from_str;
+use serde_json::Value;
+use std::num::NonZeroI128;
 static API_URL: &str = "https://en.wiktionary.org/w/api.php";
-use futures::{stream, StreamExt};
+use futures::{stream, stream::FlatMap, StreamExt, TryFutureExt};
 pub struct WiktionaryConverter {
     client: reqwest::Client,
 }
 
 impl IpaConverter for WiktionaryConverter {
     fn convert_single(&self, input: &str) -> Result<Vec<String>, anyhow::Error> {
-        futures::executor::block_on(self.get_single(input))
+        async_std::task::block_on(self.get_single(input))
+    }
+    fn convert(&self, inputs: Vec<&str>) -> Vec<Result<Vec<String>, anyhow::Error>> {
+        async_std::task::block_on(
+            stream::iter(inputs)
+                .map(|z| async { self.get_single(z).await })
+                .buffered(200)
+                .collect::<Vec<_>>(),
+        )
+    }
+}
+impl Default for WiktionaryConverter {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -25,12 +38,18 @@ impl WiktionaryConverter {
         // id of first hit
         let first_hit_id = self.get_id(word).await?;
 
-        let pron_sec_id = self.get_pron_sec_id(first_hit_id)?;
+        let pron_sec_id = self.get_pron_sec_id(first_hit_id).await?;
         // get the content of the "pronunciation" section (id=3 ?) of the current revision
         let search_url = format!("{}?format=json&action=query&pageids={}&prop=revisions&rvslots=main&rvprop=content&rvsection={}",API_URL,first_hit_id,pron_sec_id);
 
-        let pron_sec_res =
-            from_str::<Value>(reqwest::blocking::get(&search_url)?.text()?.as_str())?;
+        let pron_sec_res = from_str::<Value>(
+            &self
+                .client
+                .get(&search_url)
+                .send()
+                .and_then(|x| x.text())
+                .await?,
+        )?;
 
         // store the text of the section
         let pron_sec = pron_sec_res["query"]["pages"][first_hit_id.to_string()]["revisions"][0]
@@ -38,7 +57,7 @@ impl WiktionaryConverter {
             .as_str()
             .context("failed to read section as str")?;
 
-        println!("{pron_sec}");
+        //println!("{pron_sec}");
         // filter out only the ipa pronunciations
 
         let prons: Vec<String> = pron_sec
@@ -59,11 +78,11 @@ impl WiktionaryConverter {
         }
     }
 
-    fn get_sec_by_id(&self, page_id: i64, sec_id: i64) -> Result<String, Error> {
+    async fn get_sec_by_id(&self, page_id: i64, sec_id: i64) -> Result<String, Error> {
         let search_url = format!("{}?format=json&action=query&pageids={}&prop=revisions&rvslots=main&rvprop=content&rvsection={}",API_URL,page_id,sec_id);
 
         let pron_sec_res =
-            from_str::<Value>(reqwest::blocking::get(&search_url)?.text()?.as_str())?;
+            from_str::<Value>(&self.client.get(&search_url).send().await?.text().await?)?;
 
         Ok(
             pron_sec_res["query"]["pages"][page_id.to_string()]["revisions"][0]["slots"]["main"]
@@ -81,19 +100,19 @@ impl WiktionaryConverter {
             API_URL, word
         );
         let search_response_str = self.client.get(&search_url).send().await?.text().await?;
-        let search_response = from_str::<Value>(search_response_str.as_str())?;
+        let search_response = from_str::<Value>(&search_response_str)?;
         // id of first hit
         search_response["query"]["search"][0]["pageid"]
             .as_i64()
             .context("converting or reading ID from search failed")
     }
 
-    fn get_pron_sec_id(&self, id: i64) -> Result<i64, Error> {
+    async fn get_pron_sec_id(&self, id: i64) -> Result<i64, Error> {
         let search_url = format!(
             "{}?format=json&action=parse&prop=sections&pageid={}",
             API_URL, id
         );
-        let res = from_str::<Value>(reqwest::blocking::get(&search_url)?.text()?.as_str())?;
+        let res = from_str::<Value>(&self.client.get(&search_url).send().await?.text().await?)?;
         let sections0 = res
             .get("parse")
             .context("no 'parse' in response")?
@@ -125,53 +144,58 @@ impl WiktionaryConverter {
         anyhow::bail!("No Pronunciation section found")
     }
 
-    pub fn get_multiple(&self, words: Vec<&str>) -> Result<Vec<Vec<String>>, Error> {
-        const CONCURRENT_REQUESTS: usize = 2;
-        let max = 255;
-        ensure!(words.len() < max, "Too many words");
-
-        let ids = futures::stream::iter(words)
-            .map(|x| self.get_id(x))
-            .buffer_unordered(CONCURRENT_REQUESTS);
-        //.collect::<Result<Vec<i64>, Error>>()?;
-
-        let pron_sec_ids = ids
+    fn test(&self) {
+        let a = ["a", "b"];
+        let b = a
             .iter()
-            .map(|&x| self.get_pron_sec_id(x))
-            .collect::<Result<Vec<i64>, Error>>()?;
-        // get the content of the "pronunciation" section (id=3 ?) of the current revision
-
-        let contents = pron_sec_ids
-            .iter()
-            .zip(ids.iter())
-            .map(|(&sec_id, &page_id)| self.get_sec_by_id(page_id, sec_id))
-            .collect::<Result<Vec<String>, Error>>()?;
-
-        // filter out only the ipa pronunciations
-
-        let mut res = vec![];
-        for s in contents.iter() {
-            res.push(
-                s.split('\n')
-                    .filter(|&x| x.to_owned().starts_with("* {{a|")) // filter wanted lines
-                    .map(|x| {
-                        x.split("{{")
-                            .last() // get second parethesis
-                            .context(format!("{} doesnt have a last element after splitting", x))
-                    })
-                    .collect::<Result<Vec<_>, Error>>()?
-                    .iter()
-                    .flat_map(|&x| {
-                        x.split(['|', '}'])
-                            .skip(2)
-                            .filter(|&x| !x.is_empty()) // filter out the last two '{'
-                            .map(|x| x.to_string())
-                    })
-                    .collect::<Vec<String>>(),
-            )
-        }
-        Ok(res)
+            .map(|x| self.get_id(x).and_then(|id| self.get_pron_sec_id(id)));
     }
+    // async fn get_multiple(&self, words: Vec<&str>) -> Vec<Result<Vec<String>, anyhow::Error>> {
+    //     todo!();
+    //     const CONCURRENT_REQUESTS: usize = 2;
+
+    //     let pron_sec_ids = futures::stream::iter(words)
+    //         .map(|x| {
+    //             self.get_id(x)
+    //                 .and_then(|z| async { self.get_pron_sec_id(z).await })
+    //         })
+    //         .buffered(CONCURRENT_REQUESTS)
+    //         .collect::<Vec<_>>()
+    //         .await;
+
+    //     // get the content of the "pronunciation" section (id=3 ?) of the current revision
+    //     let ids = [];
+    //     let contents = pron_sec_ids
+    //         .iter()
+    //         .zip(ids.iter())
+    //         .map(|(&sec_id, &page_id)| self.get_sec_by_id(page_id, sec_id))
+    //         .collect::<Result<Vec<String>, Error>>()?;
+
+    //     // filter out only the ipa pronunciations
+
+    //     let mut res = vec![];
+    //     for s in contents.iter() {
+    //         res.push(
+    //             s.split('\n')
+    //                 .filter(|&x| x.to_owned().starts_with("* {{a|")) // filter wanted lines
+    //                 .map(|x| {
+    //                     x.split("{{")
+    //                         .last() // get second parethesis
+    //                         .context(format!("{} doesnt have a last element after splitting", x))
+    //                 })
+    //                 .collect::<Result<Vec<_>, Error>>()?
+    //                 .iter()
+    //                 .flat_map(|&x| {
+    //                     x.split(['|', '}'])
+    //                         .skip(2)
+    //                         .filter(|&x| !x.is_empty()) // filter out the last two '{'
+    //                         .map(|x| x.to_string())
+    //                 })
+    //                 .collect::<Vec<String>>(),
+    //         )
+    //     }
+    //     Ok(res)
+    // }
 }
 #[cfg(text)]
 mod tests {
