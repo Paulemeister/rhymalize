@@ -1238,10 +1238,11 @@ const MISC_LETTER_LIST: [(MiscLetter, &[char]); 6] = [
     (MiscLetter::VelarizedAveolar, &['\u{006C}', '\u{02E0}']),
 ];
 
-const REPLACE_LIST: [(char, &str); 3] = [
+const REPLACE_LIST: [(char, &str); 4] = [
     ('ɫ', "l\u{02E0}"),
     ('ɚ', "\u{0259}\u{02DE}"),
     ('ɝ', "\u{025C}\u{02DE}"),
+    ('ẽ', "e\u{0303}"),
 ];
 
 pub trait SyllableRule {
@@ -1408,6 +1409,7 @@ impl TryFrom<&str> for Word {
         let mut out = vec![];
 
         let mut failed = vec![];
+        let mut last_err = anyhow!("couldn't convert to Letter, this Error should be unreachable");
         for grapheme in UnicodeSegmentation::graphemes(value, true).rev() {
             if ["/", "[", "]"].iter().any(|&z| grapheme == z) {
                 continue;
@@ -1415,16 +1417,23 @@ impl TryFrom<&str> for Word {
             let mut combined = grapheme.to_string();
             failed.iter().for_each(|z| combined.push_str(*z));
 
-            if let Ok(letter) = Letter::try_from(combined.as_str()) {
-                out.push(letter);
-                failed = vec![];
-            } else {
-                failed.push(grapheme);
+            match Letter::try_from(combined.as_str()) {
+                Ok(letter) => {
+                    out.push(letter);
+                    failed = vec![];
+                }
+                Err(e) => {
+                    failed.push(grapheme);
+                    last_err = e;
+                }
             }
         }
-
-        out.reverse();
-        Ok(Self(out))
+        if failed.is_empty() {
+            out.reverse();
+            Ok(Self(out))
+        } else {
+            Err(last_err)
+        }
     }
 }
 

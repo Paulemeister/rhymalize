@@ -30,6 +30,7 @@ pub fn get_single(word: &str) -> Result<Vec<String>, Error> {
         .as_str()
         .context("failed to read section as str")?;
 
+    println!("{pron_sec}");
     // filter out only the ipa pronunciations
 
     let prons: Vec<String> = pron_sec
@@ -38,7 +39,7 @@ pub fn get_single(word: &str) -> Result<Vec<String>, Error> {
         .filter(|x| x.starts_with("IPA|en|"))
         .map(|z| z.strip_prefix("IPA|en|").unwrap().split_once("}}"))
         .collect::<Option<Vec<_>>>()
-        .with_context(|| "didn't find")?
+        .with_context(|| "didn't find ending parenthesis")?
         .iter()
         .flat_map(|(a, _)| a.split("|"))
         .map(|x| x.to_string())
