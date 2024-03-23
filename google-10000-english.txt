@@ -75,7 +75,7 @@ also
 now
 help
 get
-pm
+PM
 view
 online
 c

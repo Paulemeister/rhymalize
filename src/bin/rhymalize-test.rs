@@ -18,7 +18,7 @@ fn main() {
     // }
 
     let word_list = vec!["can't", "example", "what", "a", "in", "are", "home"];
-    let word_list = vec!["home"];
+    let word_list = vec!["PM"];
 
     let ipa_s_list = converter.get_ipa(&word_list);
 
