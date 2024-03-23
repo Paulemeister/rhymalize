@@ -35,7 +35,7 @@ impl IpaConverter for JsonLookupConverter {
             .collect())
     }
 
-    fn convert(&self, inputs: Vec<&str>) -> Vec<Result<Vec<String>, Error>> {
+    fn convert(&self, inputs: &Vec<&str>) -> Vec<Result<Vec<String>, Error>> {
         inputs
             .iter()
             .map(|input| Self::convert_single(self, input))

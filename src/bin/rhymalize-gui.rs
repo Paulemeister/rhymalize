@@ -176,7 +176,7 @@ impl App {
                     .replace(".", "")
             })
             .collect();
-        let ipas = converter.get_ipa(words.iter().map(|x| x.as_str()).collect());
+        let ipas = converter.get_ipa(&words.iter().map(|x| x.as_str()).collect());
         for (index, word) in self.text.iter_mut().flat_map(|x| x.iter_mut()).enumerate() {
             let ipas2 = &ipas[index];
             if ipas2.is_err() {

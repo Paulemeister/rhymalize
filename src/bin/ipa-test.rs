@@ -40,8 +40,8 @@ fn main() {
     // }
 
     //let converter = JsonLookupConverter::new(Path::new("./en_US.json")).unwrap();
-    let converter = rhymalize::ipa_utils::fetching::wiktionary::WiktionaryConverter {};
-    let output = converter.convert(vec!["can't", "abkhazian"]);
+    let converter = rhymalize::ipa_utils::fetching::wiktionary::WiktionaryConverter::new();
+    let output = converter.convert(&vec!["can't", "abkhazian"]);
 
     for i in output {
         if let Ok(k) = i {

@@ -6,11 +6,11 @@ pub mod json;
 pub mod wiktionary;
 
 pub trait IpaConverter {
-    fn convert(&self, inputs: Vec<&str>) -> Vec<Result<Vec<String>, anyhow::Error>> {
+    fn convert(&self, inputs: &Vec<&str>) -> Vec<Result<Vec<String>, anyhow::Error>> {
         inputs.iter().map(|x| self.convert_single(x)).collect()
     }
     fn convert_single(&self, input: &str) -> Result<Vec<String>, anyhow::Error>;
-    fn get_ipa(&self, inputs: Vec<&str>) -> Vec<Result<Vec<Word>, anyhow::Error>> {
+    fn get_ipa(&self, inputs: &Vec<&str>) -> Vec<Result<Vec<Word>, anyhow::Error>> {
         //inputs.iter().map(|x| self.get_ipa_single(x)).collect()
         self.convert(inputs)
             .into_iter()
@@ -29,4 +29,9 @@ pub trait IpaConverter {
             .map(|x| Word::try_from(x.as_str()))
             .collect::<Result<Vec<Word>, _>>()
     }
+}
+
+#[cfg(test)]
+mod tests {
+    //use super::*;
 }
