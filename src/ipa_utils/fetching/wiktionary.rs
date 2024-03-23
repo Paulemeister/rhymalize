@@ -1,11 +1,10 @@
 use super::IpaConverter;
 use anyhow::bail;
-use anyhow::{anyhow, ensure, Context, Error};
+use anyhow::{anyhow, Context, Error};
 use serde_json::from_str;
 use serde_json::Value;
-use std::num::NonZeroI128;
 static API_URL: &str = "https://en.wiktionary.org/w/api.php";
-use futures::{stream, stream::FlatMap, StreamExt, TryFutureExt};
+use futures::{stream, StreamExt, TryFutureExt};
 pub struct WiktionaryConverter {
     client: reqwest::Client,
 }
@@ -14,7 +13,7 @@ impl IpaConverter for WiktionaryConverter {
     fn convert_single(&self, input: &str) -> Result<Vec<String>, anyhow::Error> {
         async_std::task::block_on(self.get_single(input))
     }
-    fn convert(&self, inputs: &Vec<&str>) -> Vec<Result<Vec<String>, anyhow::Error>> {
+    fn convert(&self, inputs: &[&str]) -> Vec<Result<Vec<String>, anyhow::Error>> {
         async_std::task::block_on(
             stream::iter(inputs)
                 .map(|z| async { self.get_single(z).await })
@@ -77,7 +76,7 @@ impl WiktionaryConverter {
             .collect::<Option<Vec<_>>>()
             .with_context(|| "didn't find ending parenthesis")?
             .iter()
-            .flat_map(|(a, _)| a.split("|"))
+            .flat_map(|(a, _)| a.split('|'))
             .skip(2)
             .filter(|x| x.starts_with('/') || x.starts_with('['))
             .map(|x| x.to_string())
@@ -111,7 +110,7 @@ impl WiktionaryConverter {
         }
         Err(last_err)
     }
-
+    #[allow(dead_code)]
     async fn get_sec_by_id(&self, page_id: i64, sec_id: i64) -> Result<String, Error> {
         let search_url = format!("{}?format=json&action=query&pageids={}&prop=revisions&rvslots=main&rvprop=content&rvsection={}",API_URL,page_id,sec_id);
 
@@ -185,12 +184,6 @@ impl WiktionaryConverter {
         }
     }
 
-    fn test(&self) {
-        let a = ["a", "b"];
-        let b = a
-            .iter()
-            .map(|x| self.get_id(x).and_then(|id| self.get_pron_sec_ids(id)));
-    }
     // async fn get_multiple(&self, words: Vec<&str>) -> Vec<Result<Vec<String>, anyhow::Error>> {
     //     todo!();
     //     const CONCURRENT_REQUESTS: usize = 2;
@@ -246,7 +239,7 @@ mod tests {
     fn convert_top_10000_english() {
         let converter = WiktionaryConverter::new();
         let file_contents = std::fs::read_to_string("./google-10000-english.txt").unwrap();
-        let words = file_contents.lines().take(100).collect();
+        let words: Vec<_> = file_contents.lines().take(100).collect();
         let ipas = converter.get_ipa(&words);
         for (i, ipa) in ipas.iter().enumerate() {
             assert!(ipa.is_ok(), "couldnt convert \"{}\": {:?}", &words[i], ipa)

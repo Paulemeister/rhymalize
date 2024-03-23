@@ -5,6 +5,7 @@ use rhymalize::ipa_utils::fetching::{
 };
 
 fn main() {
+    let _converter = JsonLookupConverter::new(Path::new("./en_US.json")).unwrap();
     let converter = WiktionaryConverter::new();
     // what to search
 
@@ -17,7 +18,7 @@ fn main() {
     //     Err(e) => println!("{}", e),
     // }
 
-    let word_list = vec!["can't", "example", "what", "a", "in", "are", "home"];
+    //let word_list = vec!["can't", "example", "what", "a", "in", "are", "home"];
     let word_list = vec!["PM"];
 
     let ipa_s_list = converter.get_ipa(&word_list);

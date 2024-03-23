@@ -1,7 +1,6 @@
 use rhymalize::ipa_utils::{
-    self,
     fetching::{json::JsonLookupConverter, IpaConverter},
-    ipa::{self, *},
+    ipa::*,
 };
 use std::path::Path;
 
@@ -39,9 +38,9 @@ fn main() {
     //     println!("{}", i);
     // }
 
-    //let converter = JsonLookupConverter::new(Path::new("./en_US.json")).unwrap();
+    let _converter = JsonLookupConverter::new(Path::new("./en_US.json")).unwrap();
     let converter = rhymalize::ipa_utils::fetching::wiktionary::WiktionaryConverter::new();
-    let output = converter.convert(&vec!["can't", "abkhazian"]);
+    let output = converter.convert(&["can't", "abkhazian"]);
 
     for i in output {
         if let Ok(k) = i {

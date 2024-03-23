@@ -1409,14 +1409,14 @@ impl TryFrom<&str> for Word {
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         let mut out = vec![];
 
-        let mut failed = vec![];
+        let mut failed: Vec<&str> = vec![];
         let mut last_err = anyhow!("couldn't convert to Letter, this Error should be unreachable");
         for grapheme in UnicodeSegmentation::graphemes(value, true).rev() {
             if ["/", "[", "]", "(", ")"].iter().any(|&z| grapheme == z) {
                 continue;
             }
             let mut combined = grapheme.to_string();
-            failed.iter().for_each(|z| combined.push_str(*z));
+            failed.iter().for_each(|z| combined.push_str(z));
 
             match Letter::try_from(combined.as_str()) {
                 Ok(letter) => {
@@ -1558,7 +1558,7 @@ impl TryFrom<&str> for MiscLetter {
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         for (i, j) in MISC_LETTER_LIST.iter() {
             if j.iter().all(|x| value.contains(*x)) {
-                return Ok(i.clone());
+                return Ok(*i);
             }
         }
         Err(())
