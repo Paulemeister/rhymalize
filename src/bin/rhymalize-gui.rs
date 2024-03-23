@@ -1,22 +1,17 @@
-use std::io::Read;
 use std::path::Path;
-use std::rc::Rc;
-use std::sync::{Arc, RwLock, RwLockReadGuard, Weak};
+use std::sync::{Arc, RwLock, Weak};
 use std::{fs, vec};
 
-use iced::futures::lock::Mutex;
-use iced::widget::{
-    column, row, scrollable::Scrollable, Button, Column, Container, MouseArea, Row, Text,
-};
+use iced::widget::{column, row, scrollable::Scrollable, Container, MouseArea, Text};
+use iced::Settings;
+use iced::Theme;
 use iced::{executor, Application, Color};
-use iced::{Background, Settings};
-use iced::{Renderer, Sandbox, Theme};
 
 use iced::command::Command;
 use rhymalize::ipa_utils::fetching::IpaConverter;
 use rhymalize::ipa_utils::fetching::{json::JsonLookupConverter, wiktionary::WiktionaryConverter};
 use rhymalize::ipa_utils::{self, ipa::*};
-use serde_json::to_string;
+
 //use std::cell::RefCell;
 #[derive(Debug)]
 struct Rhyme {
@@ -35,6 +30,7 @@ struct DisplaySyllable {
     syllable: Syllable,
     rhymes: Vec<Arc<RwLock<RhymeSyllable>>>,
 }
+#[allow(dead_code)]
 #[derive(Debug)]
 struct RhymeSyllable {
     cur: Weak<RwLock<DisplaySyllable>>,
@@ -44,6 +40,7 @@ struct RhymeSyllable {
     next: Option<Weak<RwLock<DisplaySyllable>>>,
     next_dist: Option<usize>,
 }
+#[allow(dead_code)]
 struct App {
     raw_text: String,
     text: Vec<Vec<Arc<RwLock<DisplayWord>>>>,
@@ -125,12 +122,7 @@ impl App {
                     let new_rhyme_syl = Arc::new(RwLock::new(RhymeSyllable {
                         cur: Arc::downgrade(other_syl),
                         rhyme: Arc::downgrade(&new_rhyme),
-                        prev: new_rhyme
-                            .read()
-                            .unwrap()
-                            .members
-                            .last()
-                            .map(|z| Weak::clone(z)),
+                        prev: new_rhyme.read().unwrap().members.last().map(Weak::clone),
                         prev_dist: dist,
                         next: None,
                         next_dist: None,
@@ -156,22 +148,28 @@ impl App {
     }
 
     fn get_syllables(&mut self) -> Command<Message> {
-        let converter = JsonLookupConverter::new(Path::new(
+        let _converter = JsonLookupConverter::new(Path::new(
             "/home/paulemeister/Code/Rust/rhymalize/en_US.json",
         ))
         .unwrap();
-        let converter = WiktionaryConverter {};
+        let converter = WiktionaryConverter::new();
 
-        for word in self.text.iter_mut().flat_map(|x| x.iter_mut()) {
-            let word2 = word
-                .read()
-                .unwrap()
-                .text
-                .to_ascii_lowercase()
-                .trim()
-                .replace(",", "")
-                .replace(".", "");
-            let ipas2 = converter.get_ipa_single(&word2);
+        let words: Vec<String> = self
+            .text
+            .iter_mut()
+            .flat_map(|x| x.iter_mut())
+            .map(|z| {
+                z.read()
+                    .unwrap()
+                    .text
+                    .to_ascii_lowercase()
+                    .trim()
+                    .replace([',', '.'], "")
+            })
+            .collect();
+        let ipas = converter.get_ipa(&words.iter().map(|x| x.as_str()).collect::<Vec<_>>());
+        for (index, word) in self.text.iter_mut().flat_map(|x| x.iter_mut()).enumerate() {
+            let ipas2 = &ipas[index];
             if ipas2.is_err() {
                 println!("{ipas2:?}")
             }
@@ -230,7 +228,7 @@ impl Application for App {
     type Flags = ();
     type Theme = Theme;
 
-    fn new(flags: Self::Flags) -> (Self, Command<Message>) {
+    fn new(_flags: Self::Flags) -> (Self, Command<Message>) {
         let text = fs::read_to_string("/home/paulemeister/Code/Rust/rhymalize/text.txt").unwrap();
         (
             App {
@@ -239,9 +237,9 @@ impl Application for App {
                 rhymes: vec![],
                 raw_text: text.clone(),
                 text: text
-                    .split("\n")
+                    .split('\n')
                     .map(|line| {
-                        line.split(" ")
+                        line.split(' ')
                             .map(|word| {
                                 Arc::new(RwLock::new(DisplayWord {
                                     text: word.to_string(),
@@ -267,7 +265,6 @@ impl Application for App {
             Message::HighlightRhyme(a) => self.test(a, true),
 
             Message::DehighlightRhyme(a) => self.test(a, false),
-            _ => Command::none(),
         }
     }
 

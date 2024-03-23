@@ -1,8 +1,8 @@
 use crate::ipa_utils::fetching::*;
 use anyhow::{Context, Error};
-use serde_json::{json, Value};
-use std::io::{read_to_string, BufReader};
-use std::{fs::File, io::Read, path::Path};
+use serde_json::Value;
+use std::io::BufReader;
+use std::{fs::File, path::Path};
 pub struct JsonLookupConverter {
     pub lookup_content: Value,
 }
@@ -13,13 +13,6 @@ impl JsonLookupConverter {
             lookup_content: serde_json::from_reader(reader)?,
         })
     }
-}
-
-fn a() {
-    let a = JsonLookupConverter {
-        lookup_content: json!(""),
-    };
-    a.convert_single("a");
 }
 
 impl IpaConverter for JsonLookupConverter {
@@ -35,7 +28,7 @@ impl IpaConverter for JsonLookupConverter {
             .collect())
     }
 
-    fn convert(&self, inputs: Vec<&str>) -> Vec<Result<Vec<String>, Error>> {
+    fn convert(&self, inputs: &[&str]) -> Vec<Result<Vec<String>, Error>> {
         inputs
             .iter()
             .map(|input| Self::convert_single(self, input))

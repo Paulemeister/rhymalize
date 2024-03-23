@@ -3,7 +3,7 @@ use crate::ipa_utils::ipa::*;
 pub struct EnglishSyllableRule;
 
 impl SyllableRule for EnglishSyllableRule {
-    fn is_allowed_neighbour(&self, first: &Letter, second: &Letter) -> bool {
+    fn is_allowed_neighbour(&self, first: &Letter, _second: &Letter) -> bool {
         !(first
             == &Letter {
                 ipa_type: LetterType::Suprasegmental(Suprasegmental::Long),
