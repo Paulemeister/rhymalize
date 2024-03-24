@@ -1247,7 +1247,7 @@ const REPLACE_LIST: [(char, &str); 5] = [
 ];
 
 pub trait SyllableRule {
-    fn is_allowed_neighbour(&self, first: &Letter, second: &Letter) -> bool;
+    fn makes_valid_onset(&self, new: &Letter, rest: &Vec<Letter>) -> bool;
     fn is_diphthong(&self, first: &Letter, second: &Letter) -> bool;
 }
 
@@ -1294,6 +1294,41 @@ pub fn syls_from_word(input: &Word, options: &dyn SyllableRule) -> Vec<Syllable>
     };
     for letter in input.0.iter().rev().skip(1) {
         match (letter, last) {
+            // (
+            //     Letter {
+            //         ipa_type:
+            //             LetterType::Suprasegmental(
+            //                 Suprasegmental::PrimaryStress | Suprasegmental::SecondaryStress,
+            //             ),
+            //         diacritics: _,
+            //     },
+            //     _,
+            // ) => {
+            //     onset.reverse();
+            //     nucleus.reverse();
+            //     coda.reverse();
+            //     out.push(Syllable {
+            //         onset,
+            //         nucleus,
+            //         coda,
+            //     });
+            //     onset = vec![];
+            //     nucleus = vec![];
+            //     coda = vec![];
+            //     found_nuc = false
+            // }
+            // (
+            //     _,
+            //     Letter {
+            //         ipa_type:
+            //             LetterType::Suprasegmental(
+            //                 Suprasegmental::PrimaryStress | Suprasegmental::SecondaryStress,
+            //             ),
+            //         diacritics: _,
+            //     },
+            // ) => (),
+
+            // two consecutive vowels -> split if not diphtong
             (
                 Letter {
                     ipa_type: LetterType::Vowel(_),
@@ -1321,6 +1356,7 @@ pub fn syls_from_word(input: &Word, options: &dyn SyllableRule) -> Vec<Syllable>
                     nucleus.push(letter.clone());
                 }
             }
+            // two consecutive non vowels -> split if not allowed next to each other
             (
                 Letter {
                     ipa_type: LetterType::PulmonicConsonant(_) | LetterType::Suprasegmental(_),
@@ -1331,7 +1367,7 @@ pub fn syls_from_word(input: &Word, options: &dyn SyllableRule) -> Vec<Syllable>
                     diacritics: _,
                 },
             ) => {
-                if !options.is_allowed_neighbour(letter, last) {
+                if !options.makes_valid_onset(letter, &onset) {
                     onset.reverse();
                     nucleus.reverse();
                     coda.reverse();
@@ -1350,6 +1386,7 @@ pub fn syls_from_word(input: &Word, options: &dyn SyllableRule) -> Vec<Syllable>
                     coda.push(letter.clone());
                 }
             }
+            // vowel and non vowel -> split if nucleus already found
             (
                 Letter {
                     ipa_type: LetterType::Vowel(_),
@@ -1375,6 +1412,7 @@ pub fn syls_from_word(input: &Word, options: &dyn SyllableRule) -> Vec<Syllable>
                     found_nuc = true;
                 }
             }
+            // otherwise just append to current list
             _ => {
                 if found_nuc {
                     onset.push(letter.clone());

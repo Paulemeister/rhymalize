@@ -14,22 +14,18 @@ path = "src/lib.rs"
 
 [[bin]]
 name = "rhymalize-example"
-version = "0.1.0"
 path = "src/bin/rhymalize-test.rs"
 
 [[bin]]
 name = "ipa-example"
-version = "0.1.0"
 path = "src/bin/ipa-test.rs"
 
 [[bin]]
 name = "ipa-cli"
-version = "0.1.0"
 path = "src/bin/ipa-cli.rs"
 
 [[bin]]
 name = "rhymalize-gui"
-version = "0.1.0"
 path = "src/bin/rhymalize-gui.rs"
 
 

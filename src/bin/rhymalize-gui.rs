@@ -148,7 +148,7 @@ impl App {
     }
 
     fn get_syllables(&mut self) -> Command<Message> {
-        let _converter = JsonLookupConverter::new(Path::new(
+        let converter = JsonLookupConverter::new(Path::new(
             "/home/paulemeister/Code/Rust/rhymalize/en_US.json",
         ))
         .unwrap();

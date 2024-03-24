@@ -3,10 +3,13 @@ use anyhow::bail;
 use anyhow::{anyhow, Context, Error};
 use serde_json::from_str;
 use serde_json::Value;
+use std::collections::HashMap;
 static API_URL: &str = "https://en.wiktionary.org/w/api.php";
 use futures::{stream, StreamExt, TryFutureExt};
+use std::sync::{Arc, RwLock};
 pub struct WiktionaryConverter {
     client: reqwest::Client,
+    cache: Arc<RwLock<HashMap<String, Vec<String>>>>,
 }
 
 impl IpaConverter for WiktionaryConverter {
@@ -14,12 +17,15 @@ impl IpaConverter for WiktionaryConverter {
         async_std::task::block_on(self.get_single(input))
     }
     fn convert(&self, inputs: &[&str]) -> Vec<Result<Vec<String>, anyhow::Error>> {
-        async_std::task::block_on(
+        let res = async_std::task::block_on(
             stream::iter(inputs)
                 .map(|z| async { self.get_single(z).await })
                 .buffered(200)
                 .collect::<Vec<_>>(),
-        )
+        );
+        let _ = self.save_cache();
+
+        res
     }
 }
 impl Default for WiktionaryConverter {
@@ -30,9 +36,44 @@ impl Default for WiktionaryConverter {
 
 impl WiktionaryConverter {
     pub fn new() -> Self {
-        Self {
+        let _ = std::fs::create_dir("./.wiktionary_cache");
+        let mut new = Self {
             client: reqwest::Client::new(),
+            cache: Arc::new(RwLock::new(HashMap::new())),
+        };
+        let _ = new.load_cache();
+        new
+    }
+    fn load_cache(&mut self) -> Result<(), anyhow::Error> {
+        let contents = std::fs::read_to_string("./.wiktionary_cache/wikitonary_cache.json")?;
+        let json: Value = serde_json::from_str(&contents)?;
+        {
+            let mut cache = self
+                .cache
+                .write()
+                .map_err(|_| anyhow!("can't aquire lock"))?;
+            for (key, ipas) in json.as_object().context("cache malformed")? {
+                let values = ipas
+                    .as_array()
+                    .context("cache malformed")?
+                    .iter()
+                    .map(|x| x.as_str().unwrap().to_string())
+                    .collect();
+                cache.insert(key.clone(), values);
+            }
         }
+        Ok(())
+    }
+    fn save_cache(&self) -> Result<(), anyhow::Error> {
+        let cache = self
+            .cache
+            .write()
+            .map_err(|_| anyhow!("can't aquire lock"))?;
+        std::fs::write(
+            "./.wiktionary_cache/wikitonary_cache.json",
+            serde_json::to_string(&*cache)?,
+        )?;
+        Ok(())
     }
     async fn extract_ipa_text_helper(
         &self,
@@ -65,7 +106,7 @@ impl WiktionaryConverter {
             .as_str()
             .context("failed to read section as str")?;
 
-        println!("{pron_sec}");
+        //println!("{pron_sec}");
         // filter out only the ipa pronunciations
 
         let prons: Vec<String> = pron_sec
@@ -88,6 +129,12 @@ impl WiktionaryConverter {
         }
     }
     async fn get_single(&self, word: &str) -> Result<Vec<String>, Error> {
+        if let Ok(cache) = self.cache.read() {
+            if let Some(vals) = cache.get(word) {
+                return Ok(vals.clone());
+            }
+        }
+
         // id of first hit
         let page_id = self
             .get_id(word)
@@ -104,7 +151,14 @@ impl WiktionaryConverter {
         for pron_sec_id in pron_sec_ids {
             let res = self.extract_ipa_text_helper(pron_sec_id, page_id).await;
             match res {
-                Ok(ipas) => return Ok(ipas),
+                Ok(ipas) => {
+                    ipas.iter().for_each(|x| println!("{}", x));
+                    self.cache
+                        .write()
+                        .map_err(|_| anyhow!("can't aquire lock"))?
+                        .insert(word.to_string(), ipas.clone());
+                    return Ok(ipas);
+                }
                 Err(e) => last_err = e,
             }
         }

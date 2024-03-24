@@ -2,13 +2,26 @@ use crate::ipa_utils::ipa::*;
 
 pub struct EnglishSyllableRule;
 
+// see https://en.wikipedia.org/wiki/English_phonology
+
 impl SyllableRule for EnglishSyllableRule {
-    fn is_allowed_neighbour(&self, first: &Letter, _second: &Letter) -> bool {
-        !(first
-            == &Letter {
-                ipa_type: LetterType::Suprasegmental(Suprasegmental::Long),
-                diacritics: None,
-            })
+    fn makes_valid_onset(&self, new: &Letter, rest: &Vec<Letter>) -> bool {
+        !matches!(
+            (rest.as_slice(), new),
+            (
+                &[
+                    ..,
+                    Letter {
+                        ipa_type: LetterType::Suprasegmental(Suprasegmental::Long),
+                        diacritics: None,
+                    }
+                ],
+                &Letter {
+                    ipa_type: LetterType::Suprasegmental(Suprasegmental::Long),
+                    diacritics: None,
+                },
+            )
+        )
     }
     fn is_diphthong(&self, first: &Letter, second: &Letter) -> bool {
         matches!(
