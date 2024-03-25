@@ -4,6 +4,7 @@ use anyhow::{anyhow, Context, Error};
 use serde_json::from_str;
 use serde_json::Value;
 use std::collections::HashMap;
+use std::fmt::format;
 static API_URL: &str = "https://en.wiktionary.org/w/api.php";
 use futures::{stream, StreamExt, TryFutureExt};
 use std::sync::{Arc, RwLock};
@@ -80,6 +81,19 @@ impl WiktionaryConverter {
         sec_id: i64,
         page_id: i64,
     ) -> Result<Vec<String>, Error> {
+        let section = self.get_section(sec_id, page_id).await?;
+        self.extract_ipa_from_pron(&section).await
+    }
+    async fn extract_ipa_other_helper(
+        &self,
+        sec_id: i64,
+        page_id: i64,
+    ) -> Result<Vec<String>, Error> {
+        let section = self.get_section(sec_id, page_id).await?;
+        self.extract_ipa_from_other(&section).await
+    }
+
+    async fn get_section(&self, sec_id: i64, page_id: i64) -> Result<String, anyhow::Error> {
         // get the content of the "pronunciation" section (id=3 ?) of the current revision
         let search_url = format!("{}?format=json&action=query&pageids={}&prop=revisions&rvslots=main&rvprop=content&rvsection={}",API_URL,page_id,sec_id);
 
@@ -91,7 +105,10 @@ impl WiktionaryConverter {
                 .and_then(|x| x.text())
                 .await?,
         )
-        .context("making value from pron_sec failed")?;
+        .context(format!(
+            "making value from request for page {}, id {} failed",
+            page_id, sec_id
+        ))?;
 
         // store the text of the section
         let pron_sec = pron_sec_res
@@ -106,10 +123,10 @@ impl WiktionaryConverter {
             .as_str()
             .context("failed to read section as str")?;
 
-        //println!("{pron_sec}");
-        // filter out only the ipa pronunciations
-
-        let prons: Vec<String> = pron_sec
+        Ok(pron_sec.to_string())
+    }
+    async fn extract_ipa_from_pron(&self, text: &str) -> Result<Vec<String>, anyhow::Error> {
+        let prons: Vec<String> = text
             .to_string()
             .split("{{")
             .filter(|x| x.starts_with("IPA|en|") || x.starts_with("IPA-lite|en|"))
@@ -128,6 +145,41 @@ impl WiktionaryConverter {
             bail!("couldn't find ipa section")
         }
     }
+    async fn extract_ipa_from_other(&self, text: &str) -> Result<Vec<String>, anyhow::Error> {
+        let prefixes = ["infl of", "plural of", "pronunciation spelling of"];
+        let lang = "en";
+        let pattern: Vec<_> = prefixes.iter().map(|z| format!("{z}|{lang}|")).collect();
+
+        let prons: Vec<&str> = text
+            .split("{{")
+            .filter(|x| pattern.iter().any(|prefix| x.starts_with(prefix)))
+            .map(|z| z.split_once("}}"))
+            .collect::<Option<Vec<_>>>()
+            .with_context(|| "didn't find ending parenthesis")?
+            .iter()
+            .flat_map(|(a, _)| a.split('|'))
+            .collect();
+        let current_prefix = prons.first().context("malformed template")?;
+        let extra_ipa = match *current_prefix {
+            "infl of" => match *prons
+                .last()
+                .context("couldnt 'infl of' template malformed")?
+            {
+                "ed-form" => "d",
+                "ing-form" => "ɪŋ",
+                _ => "", //e => bail!("don't know replacement ipa for {}", e),
+            },
+            "plural of" => "s",
+            _ => "",
+        };
+        let basis = prons.get(2).context("malformed template")?;
+        let mut new: Vec<String> = self.convert_single(basis)?;
+        new.iter_mut().for_each(|z| {
+            z.insert_str(z.len() - 1, extra_ipa);
+        });
+        Ok(new)
+    }
+
     async fn get_single(&self, word: &str) -> Result<Vec<String>, Error> {
         if let Ok(cache) = self.cache.read() {
             if let Some(vals) = cache.get(word) {
@@ -142,7 +194,7 @@ impl WiktionaryConverter {
             .context("getting first_hit_id failed")?;
 
         let pron_sec_ids = self
-            .get_pron_sec_ids(page_id)
+            .get_sec_ids("Pronunciation", page_id)
             .await
             .context("getting pron_sec_id failed")?;
 
@@ -160,6 +212,34 @@ impl WiktionaryConverter {
                     return Ok(ipas);
                 }
                 Err(e) => last_err = e,
+            }
+        }
+        for heading in ["Verb", "Noun"] {
+            let verb_sec_ids = match self
+                .get_sec_ids(heading, page_id)
+                .await
+                .context("getting pron_sec_id failed")
+            {
+                Ok(a) => a,
+                Err(e) => {
+                    last_err = e;
+                    continue;
+                }
+            };
+
+            for other_sec_id in verb_sec_ids {
+                let res = self.extract_ipa_other_helper(other_sec_id, page_id).await;
+                match res {
+                    Ok(ipas) => {
+                        ipas.iter().for_each(|x| println!("{}", x));
+                        self.cache
+                            .write()
+                            .map_err(|_| anyhow!("can't aquire lock"))?
+                            .insert(word.to_string(), ipas.clone());
+                        return Ok(ipas);
+                    }
+                    Err(e) => last_err = e,
+                }
             }
         }
         Err(last_err)
@@ -194,7 +274,7 @@ impl WiktionaryConverter {
             .context("converting or reading ID from search failed")
     }
 
-    async fn get_pron_sec_ids(&self, id: i64) -> Result<Vec<i64>, Error> {
+    async fn get_sec_ids(&self, sec_name: &str, id: i64) -> Result<Vec<i64>, Error> {
         let mut result = vec![];
         let search_url = format!(
             "{}?format=json&action=parse&prop=sections&pageid={}",
@@ -219,7 +299,7 @@ impl WiktionaryConverter {
                 .as_str()
                 .context("couldn't convert to str")?;
 
-            if title == "Pronunciation" {
+            if title == sec_name {
                 result.push(
                     section
                         .get("index")
