@@ -1293,40 +1293,54 @@ pub fn syls_from_word(input: &Word, options: &dyn SyllableRule) -> Vec<Syllable>
         }
     };
     for letter in input.0.iter().rev().skip(1) {
+        //println!("{}, {}", &letter, &last);
         match (letter, last) {
-            // (
-            //     Letter {
-            //         ipa_type:
-            //             LetterType::Suprasegmental(
-            //                 Suprasegmental::PrimaryStress | Suprasegmental::SecondaryStress,
-            //             ),
-            //         diacritics: _,
-            //     },
-            //     _,
-            // ) => {
-            //     onset.reverse();
-            //     nucleus.reverse();
-            //     coda.reverse();
-            //     out.push(Syllable {
-            //         onset,
-            //         nucleus,
-            //         coda,
-            //     });
-            //     onset = vec![];
-            //     nucleus = vec![];
-            //     coda = vec![];
-            //     found_nuc = false
-            // }
-            // (
-            //     _,
-            //     Letter {
-            //         ipa_type:
-            //             LetterType::Suprasegmental(
-            //                 Suprasegmental::PrimaryStress | Suprasegmental::SecondaryStress,
-            //             ),
-            //         diacritics: _,
-            //     },
-            // ) => (),
+            // last letter was syllable break, split word
+            (
+                _,
+                Letter {
+                    ipa_type:
+                        LetterType::Suprasegmental(
+                            Suprasegmental::PrimaryStress
+                            | Suprasegmental::SecondaryStress
+                            | Suprasegmental::SyllableBreak,
+                        ),
+                    diacritics: _,
+                },
+            ) => {
+                onset.reverse();
+                nucleus.reverse();
+                coda.reverse();
+                out.push(Syllable {
+                    onset,
+                    nucleus,
+                    coda,
+                });
+                onset = vec![];
+                nucleus = vec![];
+                coda = vec![];
+                match letter {
+                    Letter {
+                        ipa_type: LetterType::Vowel(_),
+                        diacritics: _,
+                    } => {
+                        nucleus.push(letter.clone());
+                        found_nuc = true
+                    }
+                    _ => {
+                        coda.push(letter.clone());
+                        found_nuc = false
+                    }
+                }
+            }
+            // don't add syllable break to syllable
+            (
+                Letter {
+                    ipa_type: LetterType::Suprasegmental(Suprasegmental::SyllableBreak),
+                    diacritics: _,
+                },
+                _,
+            ) => {}
 
             // two consecutive vowels -> split if not diphtong
             (

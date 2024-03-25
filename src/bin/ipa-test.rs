@@ -1,6 +1,6 @@
 use rhymalize::ipa_utils::{
     fetching::{json::JsonLookupConverter, IpaConverter},
-    ipa::*,
+    ipa::{english::EnglishSyllableRule, *},
 };
 use std::path::Path;
 
@@ -40,13 +40,20 @@ fn main() {
 
     let _converter = JsonLookupConverter::new(Path::new("./en_US.json")).unwrap();
     let converter = rhymalize::ipa_utils::fetching::wiktionary::WiktionaryConverter::new();
-    let output = converter.convert(&["can't", "abkhazian"]);
+    let output = converter.convert(&["sloppy"]);
 
     for i in output {
         if let Ok(k) = i {
             for j in k {
                 match Word::try_from(j.as_str()) {
-                    Ok(t) => println!("{t}"),
+                    Ok(t) => {
+                        println!("{t}");
+                        let a = syls_from_word(&t, &EnglishSyllableRule {});
+                        for syl in a {
+                            println!("{syl}");
+                        }
+                        println!();
+                    }
                     Err(e) => println!("{j}: {e}"),
                 }
             }

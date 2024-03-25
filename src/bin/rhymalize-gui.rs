@@ -63,12 +63,24 @@ impl App {
         }
 
         let colors = [
-            Color::from_rgb8(0, 0, 255),
+            Color::from_rgb8(135, 255, 0),
+            Color::from_rgb8(255, 102, 0),
+            Color::from_rgb8(255, 0, 153),
+            Color::from_rgb8(102, 0, 255),
+            Color::from_rgb8(0, 153, 255),
+            Color::from_rgb8(0, 255, 102),
             Color::from_rgb8(0, 255, 0),
-            Color::from_rgb8(0, 255, 255),
+            Color::from_rgb8(255, 255, 0),
             Color::from_rgb8(255, 0, 0),
             Color::from_rgb8(255, 0, 255),
-            Color::from_rgb8(255, 255, 0),
+            Color::from_rgb8(0, 0, 255),
+            Color::from_rgb8(0, 255, 255),
+            Color::from_rgb8(204, 255, 153),
+            Color::from_rgb8(255, 204, 153),
+            Color::from_rgb8(255, 153, 201),
+            Color::from_rgb8(204, 153, 255),
+            Color::from_rgb8(153, 204, 255),
+            Color::from_rgb8(153, 255, 204),
         ];
         let mut col_index = 0;
 

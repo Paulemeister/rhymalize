@@ -6,22 +6,8 @@ pub struct EnglishSyllableRule;
 
 impl SyllableRule for EnglishSyllableRule {
     fn makes_valid_onset(&self, new: &Letter, rest: &Vec<Letter>) -> bool {
-        !matches!(
-            (rest.as_slice(), new),
-            (
-                &[
-                    ..,
-                    Letter {
-                        ipa_type: LetterType::Suprasegmental(Suprasegmental::Long),
-                        diacritics: None,
-                    }
-                ],
-                &Letter {
-                    ipa_type: LetterType::Suprasegmental(Suprasegmental::Long),
-                    diacritics: None,
-                },
-            )
-        )
+        true
+        // !matches!((rest.as_slice(), new), ())
     }
     fn is_diphthong(&self, first: &Letter, second: &Letter) -> bool {
         matches!(
@@ -88,6 +74,24 @@ impl SyllableRule for EnglishSyllableRule {
                     }),
                     diacritics: None,
                 },
+            ) | (
+                // own, not included in wikipedia
+                Letter {
+                    ipa_type: LetterType::Vowel(Vowel {
+                        height: VowelHeight::OpenMid,
+                        backness: VowelBackness::Front,
+                        roundedness: VowelRoundedness::Unrounded,
+                    }),
+                    diacritics: None,
+                },
+                Letter {
+                    ipa_type: LetterType::Vowel(Vowel {
+                        height: VowelHeight::Mid,
+                        backness: VowelBackness::Central,
+                        roundedness: VowelRoundedness::Unrounded,
+                    }),
+                    diacritics: None,
+                }
             )
         )
     }
