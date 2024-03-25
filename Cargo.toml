@@ -39,3 +39,4 @@ unicode-segmentation = "1.11.0"
 iced = {version="0.12.0",features = ["advanced","debug"]}
 futures = "0.3.30"
 async-std = { version = "1.12.0", features = ["tokio1"] }
+async-recursion = "1.1.0"

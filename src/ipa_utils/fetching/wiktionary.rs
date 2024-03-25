@@ -1,10 +1,10 @@
 use super::IpaConverter;
 use anyhow::bail;
 use anyhow::{anyhow, Context, Error};
+use async_recursion::async_recursion;
 use serde_json::from_str;
 use serde_json::Value;
 use std::collections::HashMap;
-use std::fmt::format;
 static API_URL: &str = "https://en.wiktionary.org/w/api.php";
 use futures::{stream, StreamExt, TryFutureExt};
 use std::sync::{Arc, RwLock};
@@ -145,6 +145,7 @@ impl WiktionaryConverter {
             bail!("couldn't find ipa section")
         }
     }
+
     async fn extract_ipa_from_other(&self, text: &str) -> Result<Vec<String>, anyhow::Error> {
         let prefixes = ["infl of", "plural of", "pronunciation spelling of"];
         let lang = "en";
@@ -173,26 +174,17 @@ impl WiktionaryConverter {
             _ => "",
         };
         let basis = prons.get(2).context("malformed template")?;
-        let mut new: Vec<String> = self.convert_single(basis)?;
+        let mut new: Vec<String> = self.get_single(basis).await?;
         new.iter_mut().for_each(|z| {
             z.insert_str(z.len() - 1, extra_ipa);
         });
         Ok(new)
     }
-
-    async fn get_single(&self, word: &str) -> Result<Vec<String>, Error> {
-        if let Ok(cache) = self.cache.read() {
-            if let Some(vals) = cache.get(word) {
-                return Ok(vals.clone());
-            }
-        }
-
-        // id of first hit
-        let page_id = self
-            .get_id(word)
-            .await
-            .context("getting first_hit_id failed")?;
-
+    async fn try_get_single_from_pron(
+        &self,
+        word: &str,
+        page_id: i64,
+    ) -> Result<Vec<String>, Error> {
         let pron_sec_ids = self
             .get_sec_ids("Pronunciation", page_id)
             .await
@@ -204,7 +196,7 @@ impl WiktionaryConverter {
             let res = self.extract_ipa_text_helper(pron_sec_id, page_id).await;
             match res {
                 Ok(ipas) => {
-                    ipas.iter().for_each(|x| println!("{}", x));
+                    //ipas.iter().for_each(|x| println!("{}", x));
                     self.cache
                         .write()
                         .map_err(|_| anyhow!("can't aquire lock"))?
@@ -214,6 +206,14 @@ impl WiktionaryConverter {
                 Err(e) => last_err = e,
             }
         }
+        Err(last_err)
+    }
+    async fn try_get_single_from_other(
+        &self,
+        word: &str,
+        page_id: i64,
+    ) -> Result<Vec<String>, Error> {
+        let mut last_err = anyhow!("this shouldnt be reachable");
         for heading in ["Verb", "Noun"] {
             let verb_sec_ids = match self
                 .get_sec_ids(heading, page_id)
@@ -231,7 +231,7 @@ impl WiktionaryConverter {
                 let res = self.extract_ipa_other_helper(other_sec_id, page_id).await;
                 match res {
                     Ok(ipas) => {
-                        ipas.iter().for_each(|x| println!("{}", x));
+                        //ipas.iter().for_each(|x| println!("{}", x));
                         self.cache
                             .write()
                             .map_err(|_| anyhow!("can't aquire lock"))?
@@ -243,6 +243,25 @@ impl WiktionaryConverter {
             }
         }
         Err(last_err)
+    }
+    #[async_recursion]
+    async fn get_single(&self, word: &str) -> Result<Vec<String>, Error> {
+        if let Ok(cache) = self.cache.read() {
+            if let Some(vals) = cache.get(word) {
+                return Ok(vals.clone());
+            }
+        }
+        // id of first hit
+        let page_id = self
+            .get_id(word)
+            .await
+            .context("getting first_hit_id failed")?;
+
+        if let Ok(vec) = self.try_get_single_from_pron(word, page_id).await {
+            return Ok(vec);
+        };
+
+        self.try_get_single_from_other(word, page_id).await
     }
     #[allow(dead_code)]
     async fn get_sec_by_id(&self, page_id: i64, sec_id: i64) -> Result<String, Error> {
