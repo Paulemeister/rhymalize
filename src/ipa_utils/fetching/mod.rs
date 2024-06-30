@@ -1,5 +1,6 @@
 use super::ipa::Word;
 use anyhow::Result;
+pub mod genius;
 pub mod json;
 pub mod wiktionary;
 
