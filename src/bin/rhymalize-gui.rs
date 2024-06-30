@@ -12,6 +12,8 @@ use rhymalize::ipa_utils::fetching::IpaConverter;
 use rhymalize::ipa_utils::fetching::{json::JsonLookupConverter, wiktionary::WiktionaryConverter};
 use rhymalize::ipa_utils::{self, ipa::*};
 
+use dotenv;
+
 //use std::cell::RefCell;
 #[derive(Debug)]
 struct Rhyme {
@@ -176,7 +178,7 @@ impl App {
                     .text
                     .to_ascii_lowercase()
                     .trim()
-                    .replace([',', '.'], "")
+                    .replace([',', '.', '!', '?', ';', '.', ',', '"', '\''], "")
             })
             .collect();
         let ipas = converter.get_ipa(&words.iter().map(|x| x.as_str()).collect::<Vec<_>>());
@@ -241,7 +243,9 @@ impl Application for App {
     type Theme = Theme;
 
     fn new(_flags: Self::Flags) -> (Self, Command<Message>) {
-        let text = fs::read_to_string("/home/paulemeister/Code/Rust/rhymalize/text.txt").unwrap();
+        //let text = fs::read_to_string("/home/paulemeister/Code/Rust/rhymalize/text.txt").unwrap();
+        let text = crate::ipa_utils::fetching::genius::get_lyrics("Rapgod").unwrap();
+
         (
             App {
                 //text: fs::read_to_string("./text.txt")
@@ -388,5 +392,6 @@ impl Application for App {
 }
 
 fn main() -> Result<(), iced::Error> {
+    dotenv::dotenv().ok();
     App::run(Settings::default())
 }
