@@ -2,19 +2,18 @@ use std::path::Path;
 use std::sync::{Arc, RwLock, Weak};
 use std::{fs, vec};
 
-use iced::widget::{column, row, scrollable::Scrollable, Container, MouseArea, Text};
-use iced::Settings;
-use iced::Theme;
-use iced::{executor, Application, Color};
+use iced::widget::{button, Column, Row};
+use iced::widget::{
+    column, container, row, scrollable::Scrollable, text, Container, MouseArea, Text,
+};
 
-use iced::command::Command;
+use iced::Color;
+
+use iced::task::Task;
 use rhymalize::ipa_utils::fetching::IpaConverter;
 use rhymalize::ipa_utils::fetching::{json::JsonLookupConverter, wiktionary::WiktionaryConverter};
 use rhymalize::ipa_utils::{self, ipa::*};
 
-use dotenv;
-
-//use std::cell::RefCell;
 #[derive(Debug)]
 struct Rhyme {
     color: Color,
@@ -50,7 +49,7 @@ struct App {
 }
 
 impl App {
-    fn calc_rhyme(&mut self) -> Command<Message> {
+    fn calc_rhyme(&mut self) -> Task<Message> {
         self.rhymes = vec![];
 
         let syls: Vec<Arc<RwLock<DisplaySyllable>>> = self
@@ -158,14 +157,11 @@ impl App {
                 self.rhymes.push(Arc::clone(&new_rhyme));
             }
         }
-        Command::none()
+        Task::none()
     }
 
-    fn get_syllables(&mut self) -> Command<Message> {
-        let converter = JsonLookupConverter::new(Path::new(
-            "/home/paulemeister/Code/Rust/rhymalize/en_US.json",
-        ))
-        .unwrap();
+    fn get_syllables(&mut self) -> Task<Message> {
+        let converter = JsonLookupConverter::new(Path::new("./en_US.json")).unwrap();
         let converter = WiktionaryConverter::new();
 
         let words: Vec<String> = self
@@ -204,31 +200,67 @@ impl App {
                 vec![]
             }
         }
-        Command::perform(async {}, |_| Message::CalculateRhyme)
+        Task::none()
     }
 
-    fn test(&mut self, input: Weak<RwLock<DisplaySyllable>>, highlight: bool) -> Command<Message> {
+    fn test(&mut self, input: Weak<RwLock<DisplaySyllable>>, highlight: bool) -> Task<Message> {
         let a = input.upgrade().unwrap();
         println!("{}", a.read().unwrap().syllable);
+
+        // if let Some(mut b) = a
+        //     .read()
+        //     .ok()
+        //     .and_then(|x| {
+        //         x.rhymes
+        //             .first()
+        //             .and_then(|x| x.read().ok())
+        //             .and_then(|x| x.rhyme.upgrade())
+        //     })
+        //     .and_then(|z| z.write().ok().map(|x| x.))
+        // {
+        //     b.highlighted = highlight
+        // };
+        #[allow(clippy::option_map_unit_fn)]
         a.read()
-            .unwrap()
-            .rhymes
-            .first()
-            .unwrap()
-            .read()
-            .unwrap()
-            .rhyme
-            .upgrade()
-            .unwrap()
-            .write()
-            .unwrap()
-            .highlighted = highlight;
-        Command::none()
+            .ok()
+            .and_then(|x| {
+                x.rhymes
+                    .first()
+                    .and_then(|x| x.read().ok())
+                    .and_then(|x| x.rhyme.upgrade())
+            })
+            .map(|x| {
+                if let Ok(mut b) = x.write() {
+                    b.highlighted = highlight
+                }
+            });
+
+        Task::none()
+    }
+
+    fn load_text(&mut self) -> Task<Message> {
+        self.text = self
+            .raw_text
+            .split('\n')
+            .map(|line| {
+                line.split(' ')
+                    .map(|word| {
+                        Arc::new(RwLock::new(DisplayWord {
+                            text: word.to_string(),
+                            syllables: vec![],
+                        }))
+                    })
+                    .collect()
+            })
+            .collect();
+
+        Task::none()
     }
 }
 
 #[derive(Debug, Clone)]
 enum Message {
+    LoadText,
     CalculateRhyme,
     GetSyllables,
     HighlightRhyme(Weak<RwLock<DisplaySyllable>>),
@@ -236,15 +268,10 @@ enum Message {
     DehighlightRhyme(Weak<RwLock<DisplaySyllable>>),
 }
 
-impl Application for App {
-    type Executor = executor::Default;
-    type Message = Message;
-    type Flags = ();
-    type Theme = Theme;
-
-    fn new(_flags: Self::Flags) -> (Self, Command<Message>) {
-        //let text = fs::read_to_string("/home/paulemeister/Code/Rust/rhymalize/text.txt").unwrap();
-        let text = crate::ipa_utils::fetching::genius::get_lyrics("Rapgod").unwrap();
+impl App {
+    fn new(_flags: ()) -> (Self, Task<Message>) {
+        let text = fs::read_to_string("./text.txt").unwrap();
+        //let text = crate::ipa_utils::fetching::genius::get_lyrics("Rapgod").unwrap();
 
         (
             App {
@@ -252,21 +279,9 @@ impl Application for App {
                 //   .unwrap()
                 rhymes: vec![],
                 raw_text: text.clone(),
-                text: text
-                    .split('\n')
-                    .map(|line| {
-                        line.split(' ')
-                            .map(|word| {
-                                Arc::new(RwLock::new(DisplayWord {
-                                    text: word.to_string(),
-                                    syllables: vec![],
-                                }))
-                            })
-                            .collect()
-                    })
-                    .collect(),
+                text: vec![],
             },
-            Command::perform(async {}, |_| Message::GetSyllables),
+            Task::none(),
         )
     }
 
@@ -274,8 +289,9 @@ impl Application for App {
         String::from("Rhymalize")
     }
 
-    fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
+    fn update(&mut self, message: Message) -> Task<Message> {
         match message {
+            Message::LoadText => self.load_text(),
             Message::CalculateRhyme => self.calc_rhyme(),
             Message::GetSyllables => self.get_syllables(),
             Message::HighlightRhyme(a) => self.test(a, true),
@@ -283,115 +299,106 @@ impl Application for App {
             Message::DehighlightRhyme(a) => self.test(a, false),
         }
     }
+    fn view(&self) -> iced::Element<'_, Message> {
+        fn make_row<'a>(line: &Vec<Arc<RwLock<DisplayWord>>>) -> Row<'a, Message> {
+            line.iter()
+                .fold(row!(), |row, words| row.push(make_text_ipa_col(words)))
+                .spacing(5)
+        }
+        fn make_syl_row<'a>(syls: Vec<Arc<RwLock<DisplaySyllable>>>) -> Row<'a, Message> {
+            let mut row: Row<'_, Message> = row!();
+            //let mut highlighted = Some(false);
+            //let mut color = Color::default();
 
-    // if let Some(syls) = x.syllables {
-    //     Some(Text::new(
-    //         syls.iter().map(|(syl, _)| syl).collect::<Syllable>>(),
-    //     ))
-    // } else {
-    //     None
-    // },
-    //.map(|x| Text::new(x.text.clone()))
-
-    fn view(&self) -> iced::Element<'_, Self::Message> {
-        let words = self
-            .text
-            .iter()
-            .map(|line| {
-                line.iter()
-                    .fold(row!(), |row, words| {
-                        let text = Text::new(words.read().unwrap().text.clone());
-                        // let mut srow = row!();
-                        // for (syl, col) in words.syllables.as_ref().unwrap() {
-                        //     let stext: Text<Theme, Renderer> = Text::new(syl.to_string());
-                        //     srow = srow.push(stext);
-                        // }
-                        let syllables = &words.read().unwrap().syllables;
-                        let sylls = syllables.iter().fold(row!().spacing(5), |srow, syl| {
-                            srow.push(
-                                MouseArea::new(
-                                    Container::new(
-                                        Text::new(syl.read().unwrap().syllable.to_string().clone())
-                                            .style({
-                                                if let Some(rhyme_syl) =
-                                                    syl.read().unwrap().rhymes.first()
-                                                {
-                                                    // if let Some(a) = rhyme_syl.prev.as_ref() {
-                                                    //     print!("{}", a.read().unwrap().syllable)
-                                                    // } else {
-                                                    //     print!("None")
-                                                    // }
-                                                    // print!(", {}, ", syl.read().unwrap().syllable);
-                                                    // if let Some(a) = rhyme_syl.next.as_ref() {
-                                                    //     println!("{}", a.read().unwrap().syllable)
-                                                    // } else {
-                                                    //     println!("None")
-                                                    // }
-
-                                                    if [
-                                                        rhyme_syl.read().unwrap().next_dist,
-                                                        rhyme_syl.read().unwrap().prev_dist,
-                                                    ]
-                                                    .iter()
-                                                    .flatten()
-                                                    .min()
-                                                    .map_or(false, |x| x < &6)
-                                                    {
-                                                        rhyme_syl
-                                                            .read()
-                                                            .unwrap()
-                                                            .rhyme
-                                                            .upgrade()
-                                                            .unwrap()
-                                                            .read()
-                                                            .unwrap()
-                                                            .color
-                                                    } else {
-                                                        Color::from_rgb(0.9, 0.9, 0.9)
-                                                    }
-                                                } else {
-                                                    Color::from_rgb(0.9, 0.9, 0.9)
-                                                }
-                                            }),
-                                    )
-                                    .style(
-                                        if if let Some(r) = syl.read().unwrap().rhymes.first() {
-                                            r.read()
-                                                .unwrap()
-                                                .rhyme
-                                                .upgrade()
-                                                .unwrap()
-                                                .read()
-                                                .unwrap()
-                                                .highlighted
-                                        } else {
-                                            false
-                                        } {
-                                            iced::widget::container::Appearance::default()
-                                                .with_background(Color::from_rgb(0.9, 0.9, 0.9))
-                                        } else {
-                                            iced::widget::container::Appearance::default()
-                                        },
-                                    ),
-                                )
-                                .on_enter(Message::HighlightRhyme(Arc::downgrade(syl)))
-                                .on_exit(Message::DehighlightRhyme(Arc::downgrade(syl))),
-                            )
-                        });
-                        row.push(column!(text, sylls).align_items(iced::Alignment::Center))
+            for syl in syls {
+                let highlighted = syl.read().ok().and_then(|x| {
+                    x.rhymes.first().and_then(|x| {
+                        x.read()
+                            .ok()
+                            .and_then(|x| x.rhyme.upgrade())
+                            .and_then(|x| x.read().ok().map(|x| x.highlighted))
                     })
-                    .spacing(5)
-            })
-            .fold(column!(), |col, row| col.push(row));
+                });
 
-        Scrollable::new(Container::new(words).width(iced::Length::Fill).center_x())
+                let container_style = if highlighted.unwrap_or(false) {
+                    iced::widget::container::Style::default()
+                        .background(Color::from_rgb(0.9, 0.9, 0.9))
+                } else {
+                    iced::widget::container::Style::default()
+                };
+
+                let text_color = syl
+                    .read()
+                    .unwrap()
+                    .rhymes
+                    .first()
+                    .and_then(|x| x.read().ok())
+                    .and_then(|rsyl| {
+                        let under_max_dist = [rsyl.next_dist, rsyl.prev_dist]
+                            .iter()
+                            .flatten()
+                            .min()
+                            .map(|x| x < &6)
+                            .unwrap_or(false);
+                        let default_color = Color::from_rgb(0.9, 0.9, 0.9);
+                        if under_max_dist {
+                            rsyl.rhyme
+                                .upgrade()
+                                .and_then(|x| x.read().ok().map(|x| x.color))
+                        } else {
+                            Some(default_color)
+                        }
+                    });
+                let syl_text_style = iced::widget::text::Style { color: text_color };
+
+                row = row.push(
+                    MouseArea::new(
+                        container(
+                            text!("{}", syl.read().unwrap().syllable)
+                                .style(move |_| syl_text_style),
+                        )
+                        .style(move |_| container_style),
+                    )
+                    .on_enter(Message::HighlightRhyme(Arc::downgrade(&syl)))
+                    .on_exit(Message::DehighlightRhyme(Arc::downgrade(&syl))),
+                );
+            }
+
+            row.spacing(5)
+        }
+        fn make_text_ipa_col<'a>(word: &Arc<RwLock<DisplayWord>>) -> Column<'a, Message> {
+            let text = Text::new(word.read().unwrap().text.clone());
+            let syl_row = make_syl_row(word.read().unwrap().syllables.clone());
+
+            column!(text, syl_row).align_x(iced::Alignment::Center)
+        }
+        fn make_lyrics_column<'a>(app: &App) -> Column<'a, Message> {
+            app.text
+                .iter()
+                .fold(column!(), |col, line| col.push(make_row(line)))
+        }
+
+        let words = make_lyrics_column(self);
+        column!(
+            row!(
+                button("Load Text").on_press(Message::LoadText),
+                button("Load IPA").on_press(Message::GetSyllables),
+                button("Calculate Rhymes").on_press(Message::CalculateRhyme)
+            )
+            .width(iced::Length::Fill),
+            Scrollable::new(
+                Container::new(words)
+                    .width(iced::Length::Fill)
+                    .center_x(iced::Length::Fill),
+            )
             .width(iced::Length::Fill)
             .height(iced::Length::Fill)
-            .into()
+        )
+        .into()
     }
 }
 
 fn main() -> Result<(), iced::Error> {
     dotenv::dotenv().ok();
-    App::run(Settings::default())
+    iced::application(App::title, App::update, App::view).run_with(|| App::new(()))
 }
