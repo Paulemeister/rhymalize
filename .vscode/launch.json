@@ -21,7 +21,8 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "sourceLanguages": ["rust"]
         },
         {
             "type": "lldb",
@@ -39,7 +40,8 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "sourceLanguages": ["rust"]
         },
         {
             "type": "lldb",
@@ -57,7 +59,8 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "sourceLanguages": ["rust"]
         },
         {
             "type": "lldb",
@@ -75,7 +78,8 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "sourceLanguages": ["rust"]
         },
 
         {
@@ -97,7 +101,8 @@
             "env": {
                 "RUST_BACKTRACE": "1"
             },
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "sourceLanguages": ["rust"]
         },
         {
             "type": "lldb",
@@ -116,7 +121,8 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "sourceLanguages": ["rust"]
         },
         {
             "type": "lldb",
@@ -134,7 +140,8 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "sourceLanguages": ["rust"]
         },
         {
             "type": "lldb",
@@ -153,7 +160,8 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "sourceLanguages": ["rust"]
         }
     ]
 }
