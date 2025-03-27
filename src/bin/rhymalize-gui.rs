@@ -2,14 +2,17 @@ use std::path::Path;
 use std::sync::{Arc, RwLock, Weak};
 use std::{fs, vec};
 
+use anyhow::Context;
+use futures::{SinkExt, Stream, StreamExt};
+use iced::stream::{channel, try_channel};
 use iced::widget::{button, Column, Row};
 use iced::widget::{
     column, container, row, scrollable::Scrollable, text, Container, MouseArea, Text,
 };
 
-use iced::Color;
-
+use iced::futures::channel::mpsc;
 use iced::task::Task;
+use iced::{Color, Subscription};
 use rhymalize::ipa_utils::fetching::IpaConverter;
 use rhymalize::ipa_utils::fetching::{json::JsonLookupConverter, wiktionary::WiktionaryConverter};
 use rhymalize::ipa_utils::{self, ipa::*};
@@ -26,7 +29,7 @@ struct DisplayWord {
     syllables: Vec<Arc<RwLock<DisplaySyllable>>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct DisplaySyllable {
     syllable: Syllable,
     rhymes: Vec<Arc<RwLock<RhymeSyllable>>>,
@@ -41,11 +44,24 @@ struct RhymeSyllable {
     next: Option<Weak<RwLock<DisplaySyllable>>>,
     next_dist: Option<usize>,
 }
+#[derive(Debug, Clone)]
+enum GetSylMessage {
+    Started(
+        mpsc::Sender<(
+            Vec<Arc<RwLock<DisplayWord>>>,
+            Arc<RwLock<JsonLookupConverter>>,
+        )>,
+    ),
+    Processed((Arc<RwLock<DisplayWord>>, Vec<DisplaySyllable>)),
+    Finished,
+}
 #[allow(dead_code)]
 struct App {
     raw_text: String,
     text: Vec<Vec<Arc<RwLock<DisplayWord>>>>,
     rhymes: Vec<Arc<RwLock<Rhyme>>>,
+    get_syl: bool,
+    ipa_converter: Arc<RwLock<JsonLookupConverter>>,
 }
 
 impl App {
@@ -160,34 +176,52 @@ impl App {
         Task::none()
     }
 
-    fn get_syllables(&mut self) -> Task<Message> {
-        let converter = JsonLookupConverter::new(Path::new("./en_US.json")).unwrap();
-        let converter = WiktionaryConverter::new();
+    fn get_syl_subscription() -> impl Stream<Item = GetSylMessage> {
+        channel(1, move |mut output| async move {
+            let (sender, mut receiver) = iced::futures::channel::mpsc::channel(100);
 
-        let words: Vec<String> = self
-            .text
-            .iter_mut()
-            .flat_map(|x| x.iter_mut())
-            .map(|z| {
-                z.read()
-                    .unwrap()
-                    .text
-                    .to_ascii_lowercase()
-                    .trim()
-                    .replace([',', '.', '!', '?', ';', '.', ',', '"', '\''], "")
-            })
-            .collect();
-        let ipas = converter.get_ipa(&words.iter().map(|x| x.as_str()).collect::<Vec<_>>());
-        for (index, word) in self.text.iter_mut().flat_map(|x| x.iter_mut()).enumerate() {
-            let ipas2 = &ipas[index];
-            if ipas2.is_err() {
-                println!("{ipas2:?}")
+            _ = output.send(GetSylMessage::Started(sender)).await;
+
+            let disp_words: Vec<Arc<RwLock<DisplayWord>>>;
+            let ipa_converter_arc: Arc<RwLock<JsonLookupConverter>>;
+            (disp_words, ipa_converter_arc) = receiver.select_next_some().await;
+
+            let ipa_converter = ipa_converter_arc.read().unwrap().clone();
+
+            // disp_words: Vec<Arc<RwLock<DisplayWord>>>,
+            // ipa_converter: Arc<RwLock<JsonLookupConverter>>,
+
+            for arc in disp_words {
+                if let Ok(mut disp_word) = arc.write() {
+                    let word_str = disp_word
+                        .text
+                        .to_ascii_lowercase()
+                        .trim()
+                        .replace([',', '.', '!', '?', ';', '.', ',', '"', '\''], "");
+
+                    let syllables =
+                        App::get_disp_syllables_from_word_str2(&word_str, &ipa_converter)
+                            .unwrap_or_default();
+
+                    disp_word.syllables = syllables;
+                    // _ = output
+                    //     .send(GetSylMessage::Processed((arc.clone(), syllables)))
+                    //     .await;
+                }
             }
-            word.write().unwrap().syllables = if let Ok(ipas) = ipas2 {
-                syls_from_word(
-                    &ipas[0], // use first possible pronunciation
-                    &ipa_utils::ipa::english::EnglishSyllableRule,
-                )
+            _ = output.send(GetSylMessage::Finished).await;
+        })
+    }
+
+    fn get_disp_syllables_from_word_str2(
+        word_str: &str,
+        converter: &impl IpaConverter,
+    ) -> Result<Vec<Arc<RwLock<DisplaySyllable>>>, anyhow::Error> {
+        let ipas = converter.get_ipa_single(word_str)?;
+        let word = ipas.first().with_context(|| "possible ipa vec was empty")?;
+
+        Ok(
+            syls_from_word(&word, &ipa_utils::ipa::english::EnglishSyllableRule)
                 .iter()
                 .map(|z| {
                     Arc::new(RwLock::new(DisplaySyllable {
@@ -195,11 +229,55 @@ impl App {
                         rhymes: vec![],
                     })) //Some(Color::from_rgb(1.0, 0.0, 0.0)))
                 })
-                .collect()
-            } else {
-                vec![]
-            }
+                .collect(),
+        )
+    }
+
+    fn get_disp_syllables_from_word_str(
+        &self,
+        word_str: &str,
+        converter: &impl IpaConverter,
+    ) -> Result<Vec<Arc<RwLock<DisplaySyllable>>>, anyhow::Error> {
+        let ipas = converter.get_ipa_single(word_str)?;
+        let word = ipas.first().with_context(|| "possible ipa vec was empty")?;
+
+        Ok(
+            syls_from_word(&word, &ipa_utils::ipa::english::EnglishSyllableRule)
+                .iter()
+                .map(|z| {
+                    Arc::new(RwLock::new(
+                        DisplaySyllable {
+                            syllable: z.to_owned(),
+                            rhymes: vec![],
+                        }, //Some(Color::from_rgb(1.0, 0.0, 0.0)))
+                    ))
+                })
+                .collect(),
+        )
+    }
+
+    fn get_syllables(&mut self) -> Task<Message> {
+        let converter = WiktionaryConverter::new();
+        let converter = JsonLookupConverter::new(Path::new("./en_US.json")).unwrap();
+
+        let disp_words = self
+            .text
+            .iter()
+            .flat_map(|x| x.iter())
+            .flat_map(|z| z.write());
+
+        for mut word in disp_words {
+            let word_str = word
+                .text
+                .to_ascii_lowercase()
+                .trim()
+                .replace([',', '.', '!', '?', ';', '.', ',', '"', '\''], "");
+
+            word.syllables = self
+                .get_disp_syllables_from_word_str(&word_str, &converter)
+                .unwrap_or(vec![]);
         }
+
         Task::none()
     }
 
@@ -266,6 +344,7 @@ enum Message {
     HighlightRhyme(Weak<RwLock<DisplaySyllable>>),
 
     DehighlightRhyme(Weak<RwLock<DisplaySyllable>>),
+    GetSylMessage(GetSylMessage),
 }
 
 impl App {
@@ -280,6 +359,10 @@ impl App {
                 rhymes: vec![],
                 raw_text: text.clone(),
                 text: vec![],
+                get_syl: false,
+                ipa_converter: Arc::new(RwLock::new(
+                    JsonLookupConverter::new(Path::new("./en_US.json")).unwrap(),
+                )),
             },
             Task::none(),
         )
@@ -291,6 +374,30 @@ impl App {
 
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
+            Message::GetSylMessage(m) => match m {
+                GetSylMessage::Started(mut s) => {
+                    let words = self
+                        .text
+                        .iter()
+                        .flat_map(|x| x.iter())
+                        .map(|x| x.clone())
+                        .collect();
+
+                    let converter = self.ipa_converter.clone();
+                    s.send((words, converter));
+                    Task::none()
+                }
+                GetSylMessage::Finished => Task::none(),
+                GetSylMessage::Processed((word_arc, syls)) => {
+                    if let Ok(mut word) = word_arc.write() {
+                        word.syllables = syls
+                            .iter()
+                            .map(|x| Arc::new(RwLock::new(x.clone())))
+                            .collect();
+                    }
+                    Task::none()
+                }
+            },
             Message::LoadText => self.load_text(),
             Message::CalculateRhyme => self.calc_rhyme(),
             Message::GetSyllables => self.get_syllables(),
@@ -395,6 +502,15 @@ impl App {
             .height(iced::Length::Fill)
         )
         .into()
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        if self.get_syl {
+            let ipa_converter = self.ipa_converter.clone();
+            Subscription::run(App::get_syl_subscription).map(Message::GetSylMessage)
+        } else {
+            Subscription::none()
+        }
     }
 }
 

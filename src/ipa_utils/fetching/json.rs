@@ -3,6 +3,8 @@ use anyhow::{Context, Error};
 use serde_json::Value;
 use std::io::BufReader;
 use std::{fs::File, path::Path};
+
+#[derive(Clone)]
 pub struct JsonLookupConverter {
     pub lookup_content: Value,
 }
