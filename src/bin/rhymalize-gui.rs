@@ -7,7 +7,7 @@ use futures::{SinkExt, Stream, StreamExt};
 use iced::stream::{channel, try_channel};
 use iced::widget::{button, Column, Row};
 use iced::widget::{
-    column, container, row, scrollable::Scrollable, text, Container, MouseArea, Text,
+    column, container, row, scrollable::Scrollable, text, text_input, Container, MouseArea, Text,
 };
 
 use iced::futures::channel::mpsc;
@@ -62,6 +62,7 @@ struct App {
     rhymes: Vec<Arc<RwLock<Rhyme>>>,
     get_syl: bool,
     ipa_converter: Arc<RwLock<JsonLookupConverter>>,
+    input_field_text: String,
 }
 
 impl App {
@@ -275,7 +276,7 @@ impl App {
 
             word.syllables = self
                 .get_disp_syllables_from_word_str(&word_str, &converter)
-                .unwrap_or(vec![]);
+                .unwrap_or_default();
         }
 
         Task::none()
@@ -334,6 +335,17 @@ impl App {
 
         Task::none()
     }
+    fn set_text_from_genius_search(&mut self) -> Task<Message> {
+        self.raw_text = match crate::ipa_utils::fetching::genius::get_lyrics(&self.input_field_text)
+        {
+            Ok(a) => a,
+            Err(e) => format!("Error getting '{}':\n{}", &self.input_field_text, e),
+        };
+
+        self.text = vec![];
+        self.rhymes = vec![];
+        Task::none()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -342,7 +354,8 @@ enum Message {
     CalculateRhyme,
     GetSyllables,
     HighlightRhyme(Weak<RwLock<DisplaySyllable>>),
-
+    InputFieldChanged(String),
+    SetGeniusLyrics,
     DehighlightRhyme(Weak<RwLock<DisplaySyllable>>),
     GetSylMessage(GetSylMessage),
 }
@@ -363,6 +376,7 @@ impl App {
                 ipa_converter: Arc::new(RwLock::new(
                     JsonLookupConverter::new(Path::new("./en_US.json")).unwrap(),
                 )),
+                input_field_text: "".into(),
             },
             Task::none(),
         )
@@ -402,12 +416,16 @@ impl App {
             Message::CalculateRhyme => self.calc_rhyme(),
             Message::GetSyllables => self.get_syllables(),
             Message::HighlightRhyme(a) => self.test(a, true),
-
+            Message::SetGeniusLyrics => self.set_text_from_genius_search(),
             Message::DehighlightRhyme(a) => self.test(a, false),
+            Message::InputFieldChanged(a) => {
+                self.input_field_text = a;
+                Task::none()
+            }
         }
     }
     fn view(&self) -> iced::Element<'_, Message> {
-        fn make_row<'a>(line: &Vec<Arc<RwLock<DisplayWord>>>) -> Row<'a, Message> {
+        fn make_row<'a>(line: &[Arc<RwLock<DisplayWord>>]) -> Row<'a, Message> {
             line.iter()
                 .fold(row!(), |row, words| row.push(make_text_ipa_col(words)))
                 .spacing(5)
@@ -490,7 +508,10 @@ impl App {
             row!(
                 button("Load Text").on_press(Message::LoadText),
                 button("Load IPA").on_press(Message::GetSyllables),
-                button("Calculate Rhymes").on_press(Message::CalculateRhyme)
+                button("Calculate Rhymes").on_press(Message::CalculateRhyme),
+                text_input("Title", &self.input_field_text)
+                    .on_input(Message::InputFieldChanged)
+                    .on_submit(Message::SetGeniusLyrics)
             )
             .width(iced::Length::Fill),
             Scrollable::new(
