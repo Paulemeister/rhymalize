@@ -13,4 +13,7 @@
             "args": ["-NoExit", "-Command", "chcp 65001"]
         }
     },
+    "nixEnvSelector.nixFile": "${workspaceFolder}/flake.nix",
+    "nixEnvSelector.useFlakes": true,
+    "nixEnvSelector.flakeShell": "default",
 }
