@@ -20,3 +20,5 @@ Provides a GUI using the `iced` crate.
 - Simple rhyme analysis based on matching nucleus
     - Highlighting of close rhyming syllables.
     - Highlighting of rhyming syllables on hover
+
+[rhymalize_gui.webm](https://github.com/user-attachments/assets/b4c63873-aa3e-4f0e-a016-33759f996174)
